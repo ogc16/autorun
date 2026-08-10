@@ -1,0 +1,72 @@
+:root {
+    --autorun-dark: #0f172a;
+}
+
+body {
+    background: #f1f5f9;
+}
+
+.navbar-dark {
+    background-color: var(--autorun-dark) !important;
+}
+
+.stat-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+}
+
+.log-viewer {
+    background: #0f172a;
+    color: #a5f3fc;
+    font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    height: 55vh;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.log-viewer .stderr {
+    color: #fda4af;
+}
+
+.code-block {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    font-family: "Cascadia Code", Consolas, monospace;
+    font-size: 0.8rem;
+    max-height: 40vh;
+    overflow: auto;
+    white-space: pre-wrap;
+}
+
+.cursor-blink::after {
+    content: "▊";
+    animation: blink 1s step-start infinite;
+    color: #67e8f9;
+}
+
+@keyframes blink {
+    50% { opacity: 0; }
+}
+
+.table-clickable tbody tr {
+    cursor: pointer;
+}

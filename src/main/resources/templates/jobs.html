@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Scheduler')}"></head>
+<body th:replace="~{fragments :: body}">
+<div th:fragment="content">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">Scheduled Jobs</h1>
+            <p class="text-muted mb-0">Quartz cron scheduling for scripts</p>
+        </div>
+        <a th:href="@{/jobs/new}" class="btn btn-primary"><i class="bi bi-calendar-plus"></i> New Job</a>
+    </div>
+
+    <div class="stat-card p-3">
+        <div th:if="${#lists.isEmpty(jobs)}" class="text-muted small py-3">
+            No scheduled jobs yet. <a th:href="@{/jobs/new}">Create your first one</a>.
+        </div>
+        <table th:if="${!#lists.isEmpty(jobs)}" class="table table-hover align-middle mb-0">
+            <thead>
+            <tr class="text-muted small">
+                <th>Name</th><th>Script</th><th>Cron</th><th>Status</th><th>Next fire</th><th>Last run</th><th class="text-end">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="j : ${jobs}">
+                <td>
+                    <a class="fw-semibold text-decoration-none" th:href="@{/jobs/{id}(id=${j.id})}" th:text="${j.name}">job</a>
+                    <div class="text-muted small" th:text="${j.description}">desc</div>
+                </td>
+                <td>
+                    <span class="badge text-bg-dark" th:text="${j.script != null ? j.script.name : '—'}">script</span>
+                </td>
+                <td><code class="small" th:text="${j.cronExpression}">cron</code></td>
+                <td>
+                    <span class="badge"
+                          th:classappend="${j.status.name() == 'SCHEDULED'} ? 'text-bg-success' : 'text-bg-warning'"
+                          th:text="${j.status}">SCHEDULED</span>
+                </td>
+                <td class="small" th:text="${j.nextFireTimeForView != null ? #temporals.format(j.nextFireTimeForView, 'MMM dd HH:mm') : '—'}">—</td>
+                <td class="small text-muted" th:text="${j.lastRunAt != null ? #temporals.format(j.lastRunAt, 'MMM dd HH:mm') : 'never'}">—</td>
+                <td class="text-end">
+                    <div class="d-inline-flex gap-1">
+                        <form th:if="${j.status.name() == 'SCHEDULED'}" th:action="@{/jobs/{id}/pause(id=${j.id})}" method="post">
+                            <button class="btn btn-sm btn-outline-warning" title="Pause"><i class="bi bi-pause-fill"></i></button>
+                        </form>
+                        <form th:if="${j.status.name() == 'PAUSED'}" th:action="@{/jobs/{id}/resume(id=${j.id})}" method="post">
+                            <button class="btn btn-sm btn-outline-success" title="Resume"><i class="bi bi-play-fill"></i></button>
+                        </form>
+                        <form th:action="@{/jobs/{id}/run-now(id=${j.id})}" method="post">
+                            <button class="btn btn-sm btn-outline-primary" title="Run now"><i class="bi bi-lightning-fill"></i></button>
+                        </form>
+                        <a th:href="@{/jobs/{id}(id=${j.id})}" class="btn btn-sm btn-outline-secondary" title="Edit"><i class="bi bi-pencil"></i></a>
+                        <form th:action="@{/jobs/{id}/delete(id=${j.id})}" method="post"
+                              onsubmit="return confirm('Delete this scheduled job?');">
+                            <button class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+</body>
+</html>

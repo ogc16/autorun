@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head(${mode == 'create' ? 'Upload Script' : 'Edit Script'})}"></head>
+<body th:replace="~{fragments :: body}">
+<div th:fragment="content">
+
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb small">
+            <li class="breadcrumb-item"><a th:href="@{/scripts}">Scripts</a></li>
+            <li class="breadcrumb-item active" th:text="${mode == 'create' ? 'Upload' : 'Edit ' + script.name}">Upload</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="stat-card p-4">
+                <h1 class="h4 mb-4" th:text="${mode == 'create' ? 'Upload a Script' : 'Edit Script: ' + script.name}">Upload</h1>
+
+                <form th:action="${mode == 'create'} ? @{/scripts/new} : @{/scripts/{id}/edit(id=${script.id})}"
+                      method="post" enctype="multipart/form-data">
+
+                    <div class="mb-3">
+                        <label class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" required
+                               placeholder="e.g. nightly-backup" th:value="${script.name}">
+                        <div class="form-text">Unique identifier shown across the dashboard.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" rows="2" class="form-control"
+                                  placeholder="What does this script do?"
+                                  th:text="${script.description}"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Tags</label>
+                        <input type="text" name="tags" class="form-control" placeholder="patching, backup, linux"
+                               th:value="${script.tags}">
+                        <div class="form-text">Comma-separated, used for filtering.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Parameters (JSON)</label>
+                        <textarea name="parametersJson" rows="5" class="form-control code-block"
+                                  placeholder='[{"name":"username","label":"Username","required":true,"defaultValue":""}]'
+                                  th:text="${script.parametersJson}"></textarea>
+                        <div class="form-text">
+                            Declare CLI arguments so the Run form renders input fields.
+                            Fields: <code>name</code>, <code>label</code>, <code>required</code>, <code>defaultValue</code>, <code>description</code>.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Script file <span th:unless="${mode == 'edit'}" class="text-danger">*</span>
+                        </label>
+                        <input type="file" name="file" class="form-control" accept=".py,.sh,.ps1,.bat,.cmd"
+                               th:required="${mode == 'create'}">
+                        <div class="form-text">
+                            <span th:if="${mode == 'edit' && script.filename}" th:text="'Current file: ' + ${script.filename}"></span>
+                            <span th:if="${mode == 'edit'}"> — leave empty to keep the current file.</span>
+                            Supported: <code>.py</code> <code>.sh</code> <code>.ps1</code> <code>.bat</code> <code>.cmd</code>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" th:text="${mode == 'create' ? 'Upload' : 'Save Changes'}">Save</button>
+                        <a th:href="@{/scripts}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="stat-card p-3">
+                <h2 class="h6 fw-bold">Examples</h2>
+                <p class="small text-muted mb-2">Parameters JSON:</p>
+                <pre class="code-block small mb-0">[
+  {
+    "name": "username",
+    "label": "Username",
+    "required": true,
+    "description": "User to provision"
+  },
+  {
+    "name": "shell",
+    "label": "Default shell",
+    "required": false,
+    "defaultValue": "/bin/bash"
+  }
+]</pre>
+            </div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

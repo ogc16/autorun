@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head(${mode == 'create' ? 'New Job' : 'Edit Job'})}"></head>
+<body th:replace="~{fragments :: body}">
+<div th:fragment="content">
+
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb small">
+            <li class="breadcrumb-item"><a th:href="@{/jobs}">Scheduler</a></li>
+            <li class="breadcrumb-item active" th:text="${mode == 'create' ? 'New Job' : 'Edit: ' + job.name}">Job</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-7">
+            <div class="stat-card p-4">
+                <h1 class="h4 mb-4" th:text="${mode == 'create' ? 'Schedule a Job' : 'Edit Job: ' + job.name}">Job</h1>
+
+                <form th:action="${mode == 'create'} ? @{/jobs/new} : @{/jobs/{id}/edit(id=${job.id})}" method="post">
+
+                    <div class="mb-3">
+                        <label class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" required placeholder="e.g. nightly-backup"
+                               th:value="${job.name}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" rows="2" class="form-control"
+                                  placeholder="Run backup.sh every Sunday at 2 AM"
+                                  th:text="${job.description}"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Script <span class="text-danger">*</span></label>
+                        <select name="scriptId" class="form-select" required>
+                            <option value="">Select a script...</option>
+                            <option th:each="s : ${scripts}" th:value="${s.id}" th:text="${s.name}"
+                                    th:selected="${job.script != null && job.script.id == s.id}"></option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Cron expression <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="text" name="cronExpression" id="cronInput" class="form-control"
+                                   placeholder="0 0 2 ? * SUN" required th:value="${job.cronExpression}">
+                            <button type="button" class="btn btn-outline-secondary" id="previewBtn">
+                                <i class="bi bi-calendar-check"></i> Preview
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            Quartz format (6 fields). Examples:
+                            <code>0 0 2 ? * SUN</code> = Sundays 02:00 ·
+                            <code>0 3 * * *</code> = daily 03:00 ·
+                            <code>0 */30 * * * ?</code> = every 30 min
+                        </div>
+                        <div id="previewResult" class="mt-2 small text-success"></div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Time zone</label>
+                            <select name="timeZone" class="form-select">
+                                <option value="UTC" th:selected="${job.timeZone == null || job.timeZone == 'UTC'}">UTC</option>
+                                <option value="America/New_York" th:selected="${job.timeZone == 'America/New_York'}">America/New_York</option>
+                                <option value="Europe/London" th:selected="${job.timeZone == 'Europe/London'}">Europe/London</option>
+                                <option value="Asia/Kolkata" th:selected="${job.timeZone == 'Asia/Kolkata'}">Asia/Kolkata</option>
+                                <option value="Asia/Tokyo" th:selected="${job.timeZone == 'Asia/Tokyo'}">Asia/Tokyo</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Notify on</label>
+                            <select name="notifyOn" class="form-select">
+                                <option value="FAILURE" th:selected="${job.notifyOn == null || job.notifyOn == 'FAILURE'}">Failure only</option>
+                                <option value="ALWAYS" th:selected="${job.notifyOn == 'ALWAYS'}">Always</option>
+                                <option value="NEVER" th:selected="${job.notifyOn == 'NEVER'}">Never</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Arguments (JSON)</label>
+                        <textarea name="argumentsJson" rows="3" class="form-control code-block"
+                                  placeholder='{"src": "/var/www", "dest": "/mnt/nas"}'
+                                  th:text="${job.argumentsJson}"></textarea>
+                        <div class="form-text">Fixed values passed to the script's declared parameters on every run.</div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary" th:text="${mode == 'create' ? 'Create Job' : 'Save Changes'}">Save</button>
+                        <a th:href="@{/jobs}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="stat-card p-3">
+                <h2 class="h6 fw-bold mb-2">Job status</h2>
+                <div th:if="${job.id != null}" class="mb-3">
+                    <span class="badge"
+                          th:classappend="${job.status.name() == 'SCHEDULED'} ? 'text-bg-success' : 'text-bg-warning'"
+                          th:text="${job.status}">SCHEDULED</span>
+                    <div class="small text-muted mt-2" th:if="${job.nextFireTimeForView != null}">
+                        Next fire: <b th:text="${#temporals.format(job.nextFireTimeForView, 'yyyy-MM-dd HH:mm z')}">—</b>
+                    </div>
+                    <div class="small text-muted" th:if="${job.lastRunAt != null}">
+                        Last run: <span th:text="${#temporals.format(job.lastRunAt, 'yyyy-MM-dd HH:mm')}">—</span>
+                    </div>
+                </div>
+                <p class="small text-muted mb-0">
+                    Jobs are scheduled with <b>Quartz</b>. Pausing stops future fires; <b>Run Now</b>
+                    fires immediately regardless of schedule. Every run produces an execution log
+                    you can inspect under <a th:href="@{/executions}">Executions</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        document.getElementById('previewBtn').addEventListener('click', async () => {
+            const cron = document.getElementById('cronInput').value;
+            const out = document.getElementById('previewResult');
+            if (!cron) { out.textContent = 'Enter a cron expression first.'; return; }
+            try {
+                const r = await fetch('/jobs/preview?cron=' + encodeURIComponent(cron) + '&timeZone=UTC');
+                const data = await r.json();
+                if (!r.ok) { out.textContent = data.message || 'Invalid cron'; return; }
+                out.innerHTML = '<i class="bi bi-check-circle me-1"></i>Next fires: ' +
+                    data.nextFireTimes.slice(0, 3).map(t => new Date(t).toLocaleString()).join(' · ');
+            } catch (e) {
+                out.textContent = 'Preview unavailable.';
+            }
+        });
+    </script>
+
+</div>
+</body>
+</html>

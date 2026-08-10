@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments :: head(${script.name})}"></head>
+<body th:replace="~{fragments :: body}">
+<div th:fragment="content">
+
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb small">
+            <li class="breadcrumb-item"><a th:href="@{/scripts}">Scripts</a></li>
+            <li class="breadcrumb-item active" th:text="${script.name}">script</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h1 class="h3 mb-1">
+                <i class="bi bi-file-earmark-code me-1"></i><span th:text="${script.name}">script</span>
+                <span class="badge text-bg-dark align-middle" th:text="${script.fileType}">SH</span>
+            </h1>
+            <p class="text-muted mb-0" th:text="${script.description}">desc</p>
+            <div class="mt-1">
+                <span th:each="t : ${#strings.arraySplit(#strings.defaultString(script.tags, ''), ',')}"
+                      class="badge text-bg-light border me-1" th:text="${t}">tag</span>
+                <span class="small text-muted ms-2" th:text="'Uploaded by ' + ${script.createdBy != null ? script.createdBy.username : '—'} + ' · ' + ${#temporals.format(script.createdAt, 'MMM dd yyyy')}"></span>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a th:href="@{/scripts/{id}/content(id=${script.id})}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-file-earmark-arrow-down"></i> Raw
+            </a>
+            <a th:href="@{/scripts/{id}/edit(id=${script.id})}" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-pencil"></i> Edit
+            </a>
+            <form th:action="@{/scripts/{id}/delete(id=${script.id})}" method="post"
+                  sec:authorize="hasRole('ADMIN')"
+                  onsubmit="return confirm('Delete this script? Scheduled jobs referencing it must be removed first.');">
+                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Delete</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- Run form -->
+        <div class="col-lg-4">
+            <div class="stat-card p-3">
+                <h2 class="h6 fw-bold mb-3"><i class="bi bi-play-fill text-success"></i> Run on demand</h2>
+                <form th:action="@{/scripts/{id}/run(id=${script.id})}" method="post">
+                    <div th:if="${#lists.isEmpty(params)}" class="small text-muted mb-2">
+                        This script takes no parameters.
+                    </div>
+                    <div class="mb-2" th:each="p : ${params}">
+                        <label class="form-label small mb-1" th:for="${p.name}">
+                            <span th:text="${p.label != null ? p.label : p.name}">param</span>
+                            <span th:if="${p.required}" class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control form-control-sm"
+                               th:id="${p.name}" th:name="${p.name}"
+                               th:value="${p.defaultValue}"
+                               th:required="${p.required}"
+                               th:placeholder="${p.description != null ? p.description : p.name}">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Extra raw arguments</label>
+                        <input type="text" name="rawArgs" class="form-control form-control-sm"
+                               placeholder="--verbose --force">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small mb-1">Notify on</label>
+                        <select name="notifyOn" class="form-select form-select-sm">
+                            <option value="FAILURE" selected>Failure only</option>
+                            <option value="ALWAYS">Always</option>
+                            <option value="NEVER">Never</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-success w-100" type="submit">
+                        <i class="bi bi-play-fill"></i> Run Script
+                    </button>
+                </form>
+                <hr class="my-3">
+                <p class="small text-muted mb-0">
+                    Runs via <code>ProcessBuilder</code> as
+                    <code th:text="${script.fileType == 'PY'} ? 'python' : (${script.fileType == 'SH'} ? 'bash' : 'powershell')">interpreter</code>.
+                    Stdout/stderr stream live; a 10-minute timeout kills hung runs.
+                </p>
+            </div>
+        </div>
+
+        <!-- Preview -->
+        <div class="col-lg-8">
+            <div class="stat-card p-3">
+                <h2 class="h6 fw-bold mb-3"><i class="bi bi-code-slash"></i> Source</h2>
+                <pre class="code-block mb-0"><span th:utext="${#strings.escapeXml(content)}">script content</span></pre>
+            </div>
+        </div>
+    </div>
+
+    <div class="stat-card p-3 mt-3">
+        <h2 class="h6 fw-bold mb-3">Recent executions of this script</h2>
+        <table th:if="${!#lists.isEmpty(recentExecutions)}" class="table table-sm align-middle mb-0">
+            <thead><tr class="text-muted small"><th>#</th><th>Trigger</th><th>Status</th><th>Exit</th><th>Duration</th><th>When</th></tr></thead>
+            <tbody>
+            <tr th:each="e : ${recentExecutions}" th:onclick="'location.href=\'/executions/' + ${e.id} + '\''" style="cursor:pointer">
+                <td th:text="${e.id}">1</td>
+                <td class="small" th:text="${e.triggeredBy}">MANUAL</td>
+                <td>
+                    <span class="badge"
+                          th:classappend="${e.status.name() == 'SUCCESS'} ? 'text-bg-success' : (${e.status.name() == 'RUNNING'} ? 'text-bg-primary' : 'text-bg-danger')"
+                          th:text="${e.status}">SUCCESS</span>
+                </td>
+                <td th:text="${e.exitCode != null ? e.exitCode : '—'}">0</td>
+                <td class="small" th:text="${e.durationMs != null ? e.durationMs + ' ms' : '—'}">—</td>
+                <td class="small text-muted" th:text="${#temporals.format(e.startedAt, 'MMM dd HH:mm:ss')}">—</td>
+            </tr>
+            </tbody>
+        </table>
+        <div th:if="${#lists.isEmpty(recentExecutions)}" class="text-muted small">No executions yet.</div>
+    </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Dashboard')}"></head>
+<body th:replace="~{fragments :: body}">
+<div th:fragment="content">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">Dashboard</h1>
+            <p class="text-muted mb-0">IT automation at a glance</p>
+        </div>
+        <a th:href="@{/scripts/new}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Upload Script
+        </a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card p-3 d-flex align-items-center">
+                <div class="stat-icon bg-primary-subtle text-primary me-3"><i class="bi bi-file-earmark-code"></i></div>
+                <div>
+                    <div class="text-muted small">Scripts</div>
+                    <div class="fs-4 fw-bold" th:text="${scriptCount}">0</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card p-3 d-flex align-items-center">
+                <div class="stat-icon bg-success-subtle text-success me-3"><i class="bi bi-calendar-event"></i></div>
+                <div>
+                    <div class="text-muted small">Scheduled Jobs</div>
+                    <div class="fs-4 fw-bold" th:text="${jobCount}">0</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card p-3 d-flex align-items-center">
+                <div class="stat-icon bg-warning-subtle text-warning me-3"><i class="bi bi-list-check"></i></div>
+                <div>
+                    <div class="text-muted small">Executions</div>
+                    <div class="fs-4 fw-bold" th:text="${executionCount}">0</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card p-3 d-flex align-items-center">
+                <div class="stat-icon bg-info-subtle text-info me-3"><i class="bi bi-graph-up-arrow"></i></div>
+                <div>
+                    <div class="text-muted small">Success Rate</div>
+                    <div class="fs-4 fw-bold" th:text="${successRate} + '%'">0%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="stat-card p-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="h6 mb-0 fw-bold">Recent Executions</h2>
+                    <a th:href="@{/executions}" class="small">View all</a>
+                </div>
+                <div th:if="${#lists.isEmpty(recentExecutions)}" class="text-muted small py-3">
+                    No executions yet — upload a script and hit <b>Run</b>.
+                </div>
+                <table th:if="${!#lists.isEmpty(recentExecutions)}" class="table table-sm table-clickable align-middle mb-0">
+                    <thead>
+                    <tr class="text-muted small">
+                        <th>#</th><th>Script</th><th>Trigger</th><th>Status</th><th>Duration</th><th>Started</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="e : ${recentExecutions}" th:onclick="'location.href=\'/executions/' + ${e.id} + '\''">
+                        <td th:text="${e.id}">1</td>
+                        <td th:text="${e.script != null ? e.script.name : '—'}">script</td>
+                        <td><span class="badge text-bg-light" th:text="${e.triggeredBy}">MANUAL</span></td>
+                        <td>
+                            <span class="badge"
+                                  th:classappend="${e.status.name() == 'SUCCESS'} ? 'text-bg-success' : (${e.status.name() == 'RUNNING'} ? 'text-bg-primary' : 'text-bg-danger')"
+                                  th:text="${e.status}">SUCCESS</span>
+                        </td>
+                        <td th:text="${e.durationMs != null ? e.durationMs + ' ms' : '—'}">—</td>
+                        <td class="text-muted small" th:text="${#temporals.format(e.startedAt, 'MMM dd HH:mm')}">—</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="stat-card p-3 mb-3">
+                <h2 class="h6 fw-bold mb-3">Execution Status</h2>
+                <div th:each="entry : ${byStatus}">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span th:text="${entry.key}">SUCCESS</span>
+                        <span class="fw-bold" th:text="${entry.value}">0</span>
+                    </div>
+                    <div class="progress mb-2" style="height:6px;">
+                        <div class="progress-bar"
+                             th:classappend="${entry.key == 'SUCCESS'} ? 'bg-success' : (${entry.key == 'RUNNING'} ? 'bg-primary' : 'bg-danger')"
+                             th:style="'width:' + (${executionCount == 0 ? 0 : entry.value * 100 / executionCount}) + '%'"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="stat-card p-3">
+                <h2 class="h6 fw-bold mb-2">Quick Actions</h2>
+                <div class="d-grid gap-2">
+                    <a th:href="@{/scripts}" class="btn btn-sm btn-outline-primary"><i class="bi bi-folder2-open"></i> Open Script Library</a>
+                    <a th:href="@{/jobs/new}" class="btn btn-sm btn-outline-primary"><i class="bi bi-calendar-plus"></i> Schedule a Job</a>
+                    <a th:href="@{/audit}" class="btn btn-sm btn-outline-primary"><i class="bi bi-shield-check"></i> View Audit Logs</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

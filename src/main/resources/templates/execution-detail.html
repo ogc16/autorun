@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Execution #' + ${execution.id})}"></head>
+<body th:replace="~{fragments :: body}">
+<div th:fragment="content">
+
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb small">
+            <li class="breadcrumb-item"><a th:href="@{/executions}">Executions</a></li>
+            <li class="breadcrumb-item active" th:text="'Execution #' + ${execution.id}">Execution</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h1 class="h3 mb-1">
+                Execution #<span th:text="${execution.id}">1</span>
+                <span class="badge" id="statusBadge"
+                      th:classappend="${execution.status.name() == 'SUCCESS'} ? 'text-bg-success' : (${execution.status.name() == 'RUNNING'} ? 'text-bg-primary' : 'text-bg-danger')"
+                      th:text="${execution.status}">RUNNING</span>
+            </h1>
+            <p class="text-muted mb-0">
+                Script <b th:text="${execution.script != null ? execution.script.name : '—'}">script</b>
+                · <span th:text="${execution.triggeredBy}">MANUAL</span>
+                <span th:if="${execution.user != null}" th:text="' · by ' + ${execution.user.username}"></span>
+                <span th:if="${execution.job != null}" th:text="' · job ' + ${execution.job.name}"></span>
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <span th:if="${execution.status.name() == 'RUNNING'}" class="badge text-bg-primary align-self-center">
+                <span class="spinner-border spinner-border-sm me-1"></span>live
+            </span>
+            <form th:if="${execution.status.name() == 'RUNNING'}"
+                  th:action="@{/executions/{id}/cancel(id=${execution.id})}" method="post">
+                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-x-octagon"></i> Cancel</button>
+            </form>
+            <a th:href="@{/executions/{id}/download(id=${execution.id})}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-download"></i> Download log
+            </a>
+            <a th:href="@{/scripts/{id}(id=${execution.script.id})}" th:if="${execution.script != null}"
+               class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-play-fill"></i> Run again
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-3"><div class="stat-card p-2 small"><span class="text-muted">Exit code</span><br><b id="exitCode" th:text="${execution.exitCode != null ? execution.exitCode : '—'}">—</b></div></div>
+        <div class="col-md-3"><div class="stat-card p-2 small"><span class="text-muted">Duration</span><br><b th:text="${execution.durationMs != null ? execution.durationMs + ' ms' : '—'}">—</b></div></div>
+        <div class="col-md-3"><div class="stat-card p-2 small"><span class="text-muted">Started</span><br><b th:text="${#temporals.format(execution.startedAt, 'HH:mm:ss')}">—</b></div></div>
+        <div class="col-md-3"><div class="stat-card p-2 small"><span class="text-muted">Finished</span><br><b th:text="${execution.finishedAt != null ? #temporals.format(execution.finishedAt, 'HH:mm:ss') : '—'}">—</b></div></div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="h6 fw-bold mb-0">Live log <span class="text-muted fw-normal">(stdout + stderr)</span></h2>
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="autoScroll" checked>
+            <label class="form-check-label small" for="autoScroll">Auto-scroll</label>
+        </div>
+    </div>
+    <div class="log-viewer" id="logViewer"></div>
+
+    <div class="small text-muted mt-2" id="streamNote">
+        <span th:if="${execution.status.name() == 'RUNNING'}" class="cursor-blink">Connected — streaming output...</span>
+        <span th:unless="${execution.status.name() == 'RUNNING'}" th:text="'Finished with status ' + ${execution.status}">done</span>
+    </div>
+
+    <script th:inline="javascript">
+        (function () {
+            const execId = /*[[${execution.id}]]*/ 0;
+            const viewer = document.getElementById('logViewer');
+            const statusBadge = document.getElementById('statusBadge');
+            const exitCode = document.getElementById('exitCode');
+            const autoScroll = document.getElementById('autoScroll');
+            const note = document.getElementById('streamNote');
+            const finished = /*[[${execution.status.name()}]]*/ 'RUNNING';
+
+            function scrollToBottom() {
+                if (autoScroll.checked) viewer.scrollTop = viewer.scrollHeight;
+            }
+
+            function setStatus(name, code) {
+                statusBadge.textContent = name;
+                statusBadge.className = 'badge ' +
+                    (name === 'SUCCESS' ? 'text-bg-success'
+                        : name === 'RUNNING' ? 'text-bg-primary' : 'text-bg-danger');
+                if (code !== null && code !== undefined) exitCode.textContent = code;
+            }
+
+            if (finished !== 'RUNNING') {
+                fetch('/executions/' + execId + '/log').then(r => r.text()).then(text => {
+                    viewer.textContent = text;
+                    scrollToBottom();
+                });
+                return;
+            }
+
+            const es = new EventSource('/executions/' + execId + '/stream');
+            es.addEventListener('log', (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    const line = document.createElement('div');
+                    if (data.stream === 'stderr') line.className = 'stderr';
+                    line.textContent = data.line;
+                    viewer.appendChild(line);
+                    scrollToBottom();
+                } catch (_) { /* ignore malformed */ }
+            });
+            es.addEventListener('status', (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    setStatus(data.status, data.exitCode);
+                } catch (_) {}
+            });
+            es.addEventListener('complete', (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    setStatus(data.status, data.exitCode);
+                } catch (_) {}
+                es.close();
+                note.innerHTML = 'Finished. <a href="/executions/' + execId + '">Reload</a> for full detail.';
+                if (autoScroll.checked) viewer.scrollTop = viewer.scrollHeight;
+            });
+            es.onerror = () => {
+                es.close();
+                note.textContent = 'Stream disconnected. <a href="/executions/' + execId + '">Reload page</a> to fetch the full log.';
+            };
+        })();
+    </script>
+
+</div>
+</body>
+</html>

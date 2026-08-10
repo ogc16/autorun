@@ -1,0 +1,67 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: autorun
+  datasource:
+    url: jdbc:h2:file:./data/autorun;MODE=MySQL;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+  thymeleaf:
+    cache: false
+  mail:
+    host: ${AUTORUN_SMTP_HOST:}
+    port: ${AUTORUN_SMTP_PORT:587}
+    username: ${AUTORUN_SMTP_USERNAME:}
+    password: ${AUTORUN_SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
+  quartz:
+    job-store-type: memory
+    properties:
+      org.quartz.scheduler.instanceName: AutoRunScheduler
+      org.quartz.threadPool.threadCount: 4
+
+autorun:
+  jwt:
+    secret: ${AUTORUN_JWT_SECRET:change-me-to-a-long-random-secret-key-64-chars-minimum!!}
+    access-token-ttl: 3600
+    refresh-token-ttl: 86400
+  storage-dir: ./data/scripts
+  log-dir: ./data/logs
+  python-interpreter: python
+  max-concurrent-executions: 5
+  default-timeout-seconds: 600
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.quartz: WARN
+    com.autorun: INFO

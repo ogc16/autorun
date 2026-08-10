@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Executions')}"></head>
+<body th:replace="~{fragments :: body}">
+<div th:fragment="content">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">Execution History</h1>
+            <p class="text-muted mb-0">Every run, its logs and result</p>
+        </div>
+        <span class="badge text-bg-primary fs-6">
+            <span class="live-dot"></span> Live via SSE
+        </span>
+    </div>
+
+    <div class="stat-card p-3 mb-3">
+        <form th:action="@{/executions}" method="get" class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <input type="text" name="scriptId" class="form-control form-control-sm"
+                       placeholder="Filter by script ID" th:value="${selectedScriptId}">
+            </div>
+            <div class="col-md-4">
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">All statuses</option>
+                    <option th:each="s : ${statuses}" th:value="${s}" th:text="${s}"
+                            th:selected="${selectedStatus != null && selectedStatus.name() == s.name()}"></option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-funnel"></i> Filter</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="stat-card p-3">
+        <div th:if="${#lists.isEmpty(executions)}" class="text-muted small py-3">No executions match.</div>
+        <table th:if="${!#lists.isEmpty(executions)}" class="table table-hover align-middle mb-0">
+            <thead>
+            <tr class="text-muted small">
+                <th>#</th><th>Script</th><th>Trigger</th><th>User</th><th>Status</th><th>Exit</th><th>Duration</th><th>Started</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="e : ${executions}" th:onclick="'location.href=\'/executions/' + ${e.id} + '\''" style="cursor:pointer">
+                <td th:text="${e.id}">1</td>
+                <td class="fw-semibold" th:text="${e.script != null ? e.script.name : '—'}">script</td>
+                <td>
+                    <span class="badge" th:classappend="${e.triggeredBy == 'SCHEDULED'} ? 'text-bg-dark' : 'text-bg-light border'"
+                          th:text="${e.triggeredBy}">MANUAL</span>
+                </td>
+                <td class="small" th:text="${e.user != null ? e.user.username : 'system'}">user</td>
+                <td>
+                    <span class="badge"
+                          th:classappend="${e.status.name() == 'SUCCESS'} ? 'text-bg-success' : (${e.status.name() == 'RUNNING'} ? 'text-bg-primary' : 'text-bg-danger')"
+                          th:text="${e.status}">SUCCESS</span>
+                </td>
+                <td th:text="${e.exitCode != null ? e.exitCode : '—'}">0</td>
+                <td class="small" th:text="${e.durationMs != null ? e.durationMs + ' ms' : '—'}">—</td>
+                <td class="small text-muted" th:text="${#temporals.format(e.startedAt, 'MMM dd HH:mm:ss')}">—</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+</body>
+</html>

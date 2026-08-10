@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Alert Settings')}"></head>
+<body th:replace="~{fragments :: body}">
+<div th:fragment="content">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">Alert Settings</h1>
+            <p class="text-muted mb-0">Email and Slack notifications for execution results</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-7">
+            <div class="stat-card p-4">
+                <form th:action="@{/settings}" method="post" th:object="${settings}">
+
+                    <h2 class="h6 fw-bold mb-3"><i class="bi bi-slack me-1"></i>Slack</h2>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" name="slackEnabled" id="slackEnabled"
+                               th:checked="${settings.slackEnabled}">
+                        <label class="form-check-label" for="slackEnabled">Enable Slack alerts</label>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Incoming webhook URL</label>
+                        <input type="text" name="slackWebhookUrl" class="form-control"
+                               placeholder="https://hooks.slack.com/services/T000/B000/XXXX"
+                               th:value="${settings.slackWebhookUrl}">
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label small">Channel (optional)</label>
+                        <input type="text" name="slackChannel" class="form-control" placeholder="#alerts"
+                               th:value="${settings.slackChannel}">
+                    </div>
+
+                    <h2 class="h6 fw-bold mb-3"><i class="bi bi-envelope me-1"></i>Email</h2>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" name="emailEnabled" id="emailEnabled"
+                               th:checked="${settings.emailEnabled}">
+                        <label class="form-check-label" for="emailEnabled">Enable email alerts</label>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label small">Recipients (comma-separated)</label>
+                        <input type="text" name="emailRecipients" class="form-control"
+                               placeholder="ops@company.com, oncall@company.com"
+                               th:value="${settings.emailRecipients}">
+                        <div class="form-text">
+                            Requires SMTP configured via
+                            <code>AUTORUN_SMTP_HOST</code> / <code>AUTORUN_SMTP_USERNAME</code> / <code>AUTORUN_SMTP_PASSWORD</code>.
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg"></i> Save Settings</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="stat-card p-3">
+                <h2 class="h6 fw-bold mb-2"><i class="bi bi-bell"></i> How alerts work</h2>
+                <ul class="small text-muted mb-3 ps-3">
+                    <li>Each script run / job carries a <b>Notify on</b> policy: <code>FAILURE</code>, <code>ALWAYS</code> or <code>NEVER</code>.</li>
+                    <li>On failure, both channels fire if enabled.</li>
+                    <li>Email body includes status, exit code, duration and the log file path.</li>
+                    <li>Slack posts a formatted message to your webhook.</li>
+                </ul>
+                <a th:href="@{/api/notifications/test}?channel=all" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-send"></i> Send test alert
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Audit')}"></head>
+<body th:replace="~{fragments :: body}">
+<div th:fragment="content">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">Audit Trail</h1>
+            <p class="text-muted mb-0">Who did what, when, from where — tamper-evident log of every action</p>
+        </div>
+        <a th:href="@{/api/audit/export}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-filetype-csv"></i> Export CSV
+        </a>
+    </div>
+
+    <div class="stat-card p-3">
+        <div th:if="${#lists.isEmpty(entries)}" class="text-muted small py-3">No audit entries yet.</div>
+        <table th:if="${!#lists.isEmpty(entries)}" class="table table-sm align-middle mb-0">
+            <thead>
+            <tr class="text-muted small">
+                <th>Timestamp</th><th>User</th><th>Action</th><th>Target</th><th>IP</th><th>Details</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="a : ${entries}">
+                <td class="small text-muted" th:text="${#temporals.format(a.timestamp, 'MMM dd HH:mm:ss')}">—</td>
+                <td class="small fw-semibold" th:text="${a.user != null ? a.user.username : 'system'}">user</td>
+                <td>
+                    <span class="badge"
+                          th:classappend="${a.action.startsWith('SCRIPT_DELETED') || a.action.startsWith('JOB_DELETED')} ? 'text-bg-danger' : (${a.action.startsWith('SCRIPT_RUN') || a.action.startsWith('JOB_RUN')} ? 'text-bg-primary' : 'text-bg-light border')"
+                          th:text="${a.action}">ACTION</span>
+                </td>
+                <td class="small" th:text="${a.targetType != null ? a.targetType + ' #' + a.targetId : '—'}">—</td>
+                <td class="small text-muted" th:text="${a.ipAddress}">ip</td>
+                <td class="small" th:text="${a.details}">details</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+</body>
+</html>

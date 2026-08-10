@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Script Library')}"></head>
+<body th:replace="~{fragments :: body}">
+<div th:fragment="content">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">Script Library</h1>
+            <p class="text-muted mb-0">Upload, manage and run IT automation scripts</p>
+        </div>
+        <a th:href="@{/scripts/new}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Upload Script</a>
+    </div>
+
+    <div class="stat-card p-3 mb-3">
+        <form th:action="@{/scripts}" method="get" class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <input type="text" name="search" class="form-control form-control-sm" placeholder="Search name or description..."
+                       th:value="${search}">
+            </div>
+            <div class="col-md-3">
+                <input type="text" name="tag" class="form-control form-control-sm" placeholder="Filter by tag (e.g. backup)"
+                       th:value="${tag}">
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-search"></i> Filter</button>
+                <a th:href="@{/scripts}" class="btn btn-sm btn-outline-secondary">Clear</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="stat-card p-3">
+        <div th:if="${#lists.isEmpty(scripts)}" class="text-muted small py-3">
+            No scripts found. <a th:href="@{/scripts/new}">Upload your first script</a>.
+        </div>
+        <table th:if="${!#lists.isEmpty(scripts)}" class="table table-hover align-middle mb-0">
+            <thead>
+            <tr class="text-muted small">
+                <th>Name</th><th>Type</th><th>Description</th><th>Tags</th><th>Last run</th><th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="s : ${scripts}">
+                <td><a class="fw-semibold text-decoration-none" th:href="@{/scripts/{id}(id=${s.id})}" th:text="${s.name}">script</a></td>
+                <td>
+                    <span class="badge text-bg-dark" th:text="${s.fileType}">SH</span>
+                </td>
+                <td class="text-muted small" th:text="${s.description}">desc</td>
+                <td>
+                    <span th:each="t : ${#strings.arraySplit(#strings.defaultString(s.tags, ''), ',')}"
+                          class="badge text-bg-light border me-1" th:text="${t}">tag</span>
+                </td>
+                <td class="small text-muted" th:text="${s.lastExecutedAt != null ? #temporals.format(s.lastExecutedAt, 'MMM dd HH:mm') : 'never'}">—</td>
+                <td class="text-end">
+                    <a th:href="@{/scripts/{id}(id=${s.id})}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-play-fill"></i> Run
+                    </a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+</body>
+</html>
