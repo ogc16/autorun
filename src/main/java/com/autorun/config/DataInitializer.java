@@ -99,6 +99,51 @@ public class DataInitializer implements CommandLineRunner {
                 new ScriptParam("severity", "Severity", "info, warning, or critical (default: warning)", false, "warning"),
                 new ScriptParam("slack_webhook", "Slack webhook", "Slack webhook URL", false, ""),
                 new ScriptParam("email_to", "Email to", "Email recipient", false, ""))));
+        // Tool integrations
+        TEMPLATES.put("ansible_runner", new ScriptTemplate("ansible_runner.py", "Run Ansible playbooks, ping hosts, inspect inventory",
+                "ansible,provisioning,cross-platform", List.of(
+                new ScriptParam("action", "Action", "run, list, inventory, ping, check (default: run)", false, "run"),
+                new ScriptParam("playbook", "Playbook", "Path to playbook YAML", false, ""),
+                new ScriptParam("inventory", "Inventory", "Inventory file path or host list", true, null),
+                new ScriptParam("limit", "Limit", "Limit to specific hosts", false, ""),
+                new ScriptParam("tags", "Tags", "Run only specific tags", false, ""),
+                new ScriptParam("extra_vars", "Extra vars", "JSON string of extra variables", false, "{}"),
+                new ScriptParam("become", "Become", "Use sudo escalation (default: true)", false, "true"),
+                new ScriptParam("check_mode", "Check mode", "Dry-run (default: false)", false, "false"),
+                new ScriptParam("verbosity", "Verbosity", "Verbosity level 0-4 (default: 0)", false, "0"),
+                new ScriptParam("ssh_key", "SSH key", "Path to SSH private key", false, ""))));
+        TEMPLATES.put("power_automate", new ScriptTemplate("power_automate.py", "Microsoft 365 automation via Graph API",
+                "microsoft,automate,business", List.of(
+                new ScriptParam("action", "Action", "create_user, list_users, disable_user, assign_license, send_teams_message, send_email, list_sharepoint_files, list_groups, add_to_group", true, null),
+                new ScriptParam("user_email", "User email", "Target user email", false, ""),
+                new ScriptParam("display_name", "Display name", "User display name (create_user)", false, ""),
+                new ScriptParam("password", "Password", "Initial password (create_user)", false, ""),
+                new ScriptParam("license_sku", "License SKU", "License SKU ID (assign_license)", false, ""),
+                new ScriptParam("message", "Message", "Message text or subject|body", false, ""),
+                new ScriptParam("channel_id", "Channel ID", "Teams channel ID", false, ""))));
+        TEMPLATES.put("datto_rmm", new ScriptTemplate("datto_rmm.py", "Datto RMM: devices, patches, scripts, alerts, audit",
+                "rmm,monitoring,multi-client", List.of(
+                new ScriptParam("action", "Action", "list_devices, list_sites, get_device, run_script, list_patches, install_patch, get_alerts, get_audit_log, list_scripts", true, null),
+                new ScriptParam("site_uid", "Site UID", "Filter by site UID", false, ""),
+                new ScriptParam("device_uid", "Device UID", "Device UID for device actions", false, ""),
+                new ScriptParam("script_uid", "Script UID", "Script UID for run_script", false, ""),
+                new ScriptParam("patch_uid", "Patch UID", "Patch UID for install_patch", false, ""),
+                new ScriptParam("query", "Query", "Search query for devices", false, ""))));
+        TEMPLATES.put("zapier_trigger", new ScriptTemplate("zapier_trigger.py", "Trigger Zapier webhooks to connect thousands of apps",
+                "zapier,workflow,automate", List.of(
+                new ScriptParam("action", "Action", "trigger, test_webhook, execution_complete, alert, patch_report", false, "trigger"),
+                new ScriptParam("webhook_url", "Webhook URL", "Zapier webhook URL", true, null),
+                new ScriptParam("zap_name", "Zap name", "Friendly name for the event", false, "AutoRun Event"),
+                new ScriptParam("event_type", "Event type", "execution_complete, alert, patch_report, health_check, custom", false, "custom"),
+                new ScriptParam("payload", "Payload", "JSON string of data to send", false, "{}"),
+                new ScriptParam("priority", "Priority", "low, normal, high, critical", false, "normal"))));
+        TEMPLATES.put("anydesk_admin", new ScriptTemplate("anydesk_admin.py", "AnyDesk remote access: sessions, devices, unattended access",
+                "anydesk,remote-access,admin", List.of(
+                new ScriptParam("action", "Action", "get_adr_id, get_status, list_devices, set_password, disconnect_all, set_alias, get_logs, unattended_access, session_record", true, null),
+                new ScriptParam("password", "Password", "AnyDesk unattended access password", false, ""),
+                new ScriptParam("device_id", "Device ID", "Target device AnyDesk ID", false, ""),
+                new ScriptParam("alias", "Alias", "Friendly alias for this device", false, ""),
+                new ScriptParam("duration", "Duration", "Recording duration in minutes (0=unlimited)", false, "0"))));
     }
 
     private final UserRepository userRepository;
