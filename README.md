@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚡ AutoRun — Automation Script Runner
+# AutoRun — Automation Script Runner
 
 **A secure, centralized platform to upload, schedule, and execute IT automation scripts — with live logs, audit trails, and alerts.**
 
@@ -23,22 +23,22 @@ failure can **page you** via email or Slack.
 
 ---
 
-## ✨ Features
+## Features
 
 | | |
 |---|---|
-| 📚 **Script Library** | Upload `.sh`, `.py`, `.ps1`, `.bat` / `.cmd` files with descriptions, tags, and **declared CLI parameters** that render as input fields on the Run form. |
-| ▶️ **On-demand execution** | Click **Run** and watch **stdout/stderr stream live** (Server-Sent Events). Get an exit code, download the full log. A hard timeout kills hung scripts. |
-| 🕐 **Quartz scheduler** | Cron-based recurring jobs (`0 0 2 ? * SUN`) with pause / resume / run-now and a live next-fire-time preview. |
-| 🔐 **RBAC** | `ADMIN` (full control) vs `TECH` (run approved scripts, schedule jobs, view own logs). Enforced on both UI and REST API via Spring Security method security. |
-| 🪪 **JWT auth** | Token-based REST API (`/api/**`) alongside session-based form login for the Thymeleaf UI. |
-| 🛡️ **Audit trail** | Every run, upload, delete, schedule, and cancel is logged with actor, target, IP, and timestamp — exportable as CSV. |
-| 🔔 **Alerts** | Email and Slack webhook notifications on script/job failure, with a per-run `FAILURE` / `ALWAYS` / `NEVER` policy. |
-| 🐳 **Docker-ready** | Multi-stage `Dockerfile` with tini, non-root user, JVM container tuning. `docker-compose.yml` for local dev. |
-| ☸️ **Kubernetes / GKE** | Production-ready K8s manifests: Deployment, HPA, PDB, Ingress with managed TLS, Cloud SQL Proxy sidecar. One-command deploy script. |
-| 📦 **10 bundled scripts** | Cross-platform automation out of the box: system info, disk usage, SSL checks, log collection, service monitoring, process restart, and more. |
+| **Script Library** | Upload `.sh`, `.py`, `.ps1`, `.bat` / `.cmd` files with descriptions, tags, and **declared CLI parameters** that render as input fields on the Run form. |
+| **On-demand execution** | Click **Run** and watch **stdout/stderr stream live** (Server-Sent Events). Get an exit code, download the full log. A hard timeout kills hung scripts. |
+| **Quartz scheduler** | Cron-based recurring jobs (`0 0 2 ? * SUN`) with pause / resume / run-now and a live next-fire-time preview. |
+| **RBAC** | `ADMIN` (full control) vs `TECH` (run approved scripts, schedule jobs, view own logs). Enforced on both UI and REST API via Spring Security method security. |
+| **JWT auth** | Token-based REST API (`/api/**`) alongside session-based form login for the Thymeleaf UI. |
+| **Audit trail** | Every run, upload, delete, schedule, and cancel is logged with actor, target, IP, and timestamp — exportable as CSV. |
+| **Alerts** | Email and Slack webhook notifications on script/job failure, with a per-run `FAILURE` / `ALWAYS` / `NEVER` policy. |
+| **Docker-ready** | Multi-stage `Dockerfile` with tini, non-root user, JVM container tuning. `docker-compose.yml` for local dev. |
+| **Kubernetes / GKE** | Production-ready K8s manifests: Deployment, HPA, PDB, Ingress with managed TLS, Cloud SQL Proxy sidecar. One-command deploy script. |
+| **10 bundled scripts** | Cross-platform automation out of the box: system info, disk usage, SSL checks, log collection, service monitoring, process restart, and more. |
 
-## 🧱 Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |---|---|
@@ -52,7 +52,7 @@ failure can **page you** via email or Slack.
 | Build / Deploy | Maven, Docker, GitHub Actions CI |
 | Orchestration | Kubernetes (GKE), HPA, PDB, Managed Certificates, Cloud SQL Proxy |
 
-## 🚀 Quick Start
+## Quick Start
 
 Prerequisites: **Java 17+** and **Maven** (or use the bundled `./mvnw` wrapper).
 
@@ -71,7 +71,7 @@ Open **http://localhost:8080** and sign in:
 | Admin | `admin` | `admin123` | everything |
 | Tech | `tech` | `tech123` | run scripts, schedule jobs, own logs only |
 
-> ⚠️ **Change the seeded passwords and the `AUTORUN_JWT_SECRET` before any real deployment.**
+> **Note:** Change the seeded passwords and the `AUTORUN_JWT_SECRET` before any real deployment.
 
 ### Docker
 
@@ -97,7 +97,7 @@ kubectl -n autorun get ingress   # get external IP
 
 See [`k8s/`](k8s/) for all manifests and [`deploy-gke.sh`](deploy-gke.sh) for the full deployment script.
 
-## 🧪 Demo in 60 Seconds
+## Demo in 60 Seconds
 
 1. Log in as **`admin`** → **Scripts** → open **`system_info`** → **Run Script**.
 2. Watch the log stream live, see **SUCCESS / exit 0**.
@@ -131,7 +131,7 @@ curl -s -X POST http://localhost:8080/api/scripts/1/execute \
 | `ssl_check` | `.py` | Cross-platform | Check SSL certificate expiry |
 | `restart_process` | `.py` | Cross-platform | Restart a process by name |
 
-## 📖 Documentation
+## Documentation
 
 | Document | Contents |
 |---|---|
@@ -140,7 +140,7 @@ curl -s -X POST http://localhost:8080/api/scripts/1/execute \
 | [**User Guide**](docs/USER_GUIDE.md) | Roles, step-by-step walkthroughs, sample scripts |
 | [**Deployment**](docs/DEPLOYMENT.md) | Docker, Kubernetes/GKE, environment variables, production hardening |
 
-## 🗺️ Project Layout
+## Project Layout
 
 ```
 src/main/java/com/autorun/
@@ -167,7 +167,7 @@ docker-compose.yml Local dev (H2)
 .github/           CI/CD workflows (ci.yml, release.yml)
 ```
 
-## 🔒 Security Notes
+## Security Notes
 
 - Scripts run with the privileges of the app process — deploy AutoRun **inside the Docker container
   as a non-root user** on an isolated host in production.
@@ -177,7 +177,7 @@ docker-compose.yml Local dev (H2)
 - Passwords are **BCrypt-hashed**; the REST API is protected by short-lived **JWT** access tokens.
 - In production, swap H2 for **MySQL 8** (Cloud SQL on GKE) with `ddl-auto: validate`.
 
-## 🗓️ Roadmap
+## Roadmap
 
 - [x] Docker-ready deployment (multi-stage build, compose)
 - [x] Kubernetes / GKE manifests (Deployment, HPA, PDB, Ingress, Cloud SQL Proxy)
@@ -188,7 +188,7 @@ docker-compose.yml Local dev (H2)
 - [ ] Git-backed script version control
 - [ ] Immutable audit logs with external sink (Syslog / ELK)
 
-## 📄 License
+## License
 
 [MIT](LICENSE)
 
