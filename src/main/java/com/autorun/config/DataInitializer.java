@@ -1,12 +1,11 @@
 package com.autorun.config;
 
-import com.autorun.model.Role;
-import com.autorun.model.Script;
-import com.autorun.model.ScriptParam;
-import com.autorun.model.User;
+import com.autorun.model.*;
 import com.autorun.repository.ScriptRepository;
 import com.autorun.repository.UserRepository;
+import com.autorun.repository.WorkflowRepository;
 import com.autorun.service.StorageService;
+import com.autorun.service.WorkflowService;
 import com.autorun.util.JsonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -144,19 +143,90 @@ public class DataInitializer implements CommandLineRunner {
                 new ScriptParam("device_id", "Device ID", "Target device AnyDesk ID", false, ""),
                 new ScriptParam("alias", "Alias", "Friendly alias for this device", false, ""),
                 new ScriptParam("duration", "Duration", "Recording duration in minutes (0=unlimited)", false, "0"))));
+        // ── Accounting & Compliance ──────────────────────────────────────────
+        TEMPLATES.put("bank_feed_sync", new ScriptTemplate("bank_feed_sync.py", "Bank Feed Sync & Reconciliation",
+                "accounting,reconciliation,finance", List.of(
+                new ScriptParam("institution", "Institution", "Bank name (e.g. Chase, Revolut)", false, "Default Bank"),
+                new ScriptParam("account", "Account", "Account identifier", false, "CHECKING-001"),
+                new ScriptParam("days", "Days back", "Days to look back for transactions", false, "30"),
+                new ScriptParam("tolerance", "Tolerance", "Auto-match tolerance in currency units", false, "0.01"))));
+        TEMPLATES.put("intercompany_clearing", new ScriptTemplate("intercompany_clearing.py", "Intercompany Clearing & Elimination",
+                "accounting,consolidation,finance", List.of(
+                new ScriptParam("period", "Period", "Reporting period (YYYY-MM)", false, ""),
+                new ScriptParam("entities", "Entities", "Comma-separated entity codes", false, "ALL"))));
+        TEMPLATES.put("depreciation_run", new ScriptTemplate("depreciation_run.py", "Depreciation & Amortization Run",
+                "accounting,assets,finance", List.of(
+                new ScriptParam("period", "Period", "Reporting period (YYYY-MM)", false, ""),
+                new ScriptParam("method", "Method", "SL (straight-line), DB (declining balance), SYD (sum-of-years), MACRS", false, "SL"),
+                new ScriptParam("category", "Category", "Filter by asset category", false, "ALL"))));
+        TEMPLATES.put("fx_revaluation", new ScriptTemplate("fx_revaluation.py", "FX Revaluation with ECB Rates",
+                "accounting,fx,finance", List.of(
+                new ScriptParam("base_currency", "Base currency", "Functional currency for revaluation", false, "EUR"),
+                new ScriptParam("period", "Period", "Reporting period (YYYY-MM)", false, ""),
+                new ScriptParam("tolerance", "Tolerance", "Materiality threshold for exceptions", false, "100.00"))));
+        TEMPLATES.put("vat_gst_return", new ScriptTemplate("vat_gst_return.py", "VAT/GST Return Pre-Compilation",
+                "accounting,tax,compliance", List.of(
+                new ScriptParam("country", "Country", "Jurisdiction code (GB, IE, DE, AU, NZ, SG)", false, "GB"),
+                new ScriptParam("period", "Period", "Tax period (YYYY-MM or YYYY-Q1)", false, ""),
+                new ScriptParam("scheme", "Scheme", "Tax scheme (standard, flat-rate, cash-accounting)", false, "standard"))));
+        TEMPLATES.put("audit_extract", new ScriptTemplate("audit_extract.py", "Audit Trail & Fixed Asset Archive",
+                "accounting,audit,compliance", List.of(
+                new ScriptParam("start_date", "Start date", "Audit trail start (YYYY-MM-DD)", false, ""),
+                new ScriptParam("end_date", "End date", "Audit trail end (YYYY-MM-DD)", false, ""),
+                new ScriptParam("asset_id", "Asset ID", "Specific fixed asset to archive", false, "ALL"),
+                new ScriptParam("hash_chain", "Hash chain", "Verify Merkle chain integrity", false, "true"))));
+        TEMPLATES.put("payment_batch", new ScriptTemplate("payment_batch.py", "Batch Payment File Generation (ISO 20022)",
+                "accounting,payments,finance", List.of(
+                new ScriptParam("batch_id", "Batch ID", "Payment batch identifier", false, ""),
+                new ScriptParam("format", "Format", "ISO_20022_XML, SEPA_XML, BACS_TXT", false, "ISO_20022_XML"),
+                new ScriptParam("currency", "Currency", "Payment currency code", false, "EUR"),
+                new ScriptParam("execute", "Execute", "Create actual file (false = preview)", false, "false"))));
+        TEMPLATES.put("dunning_credit_control", new ScriptTemplate("dunning_credit_control.py", "Dunning & Credit Control",
+                "accounting,credit-control,finance", List.of(
+                new ScriptParam("aging_buckets", "Aging buckets", "Comma-separated day thresholds", false, "30,60,90,120"),
+                new ScriptParam("dunning_level", "Dunning level", "1=reminder, 2=firm, 3=final, 4=legal", false, "1"),
+                new ScriptParam("auto_credit_hold", "Auto credit hold", "Auto-hold accounts over limit", false, "true"))));
+        // ── FP&A ────────────────────────────────────────────────────────────
+        TEMPLATES.put("bva_variance", new ScriptTemplate("bva_variance.py", "Budget vs. Actuals Variance Analysis",
+                "fp&a,variance,planning", List.of(
+                new ScriptParam("period", "Period", "Reporting period (YYYY-MM)", false, ""),
+                new ScriptParam("threshold_pct", "Threshold %", "Flag variances above this %", false, "10"),
+                new ScriptParam("by_cost_center", "By cost center", "Break down by cost center", false, "true"))));
+        TEMPLATES.put("rolling_forecast", new ScriptTemplate("rolling_forecast.py", "Rolling Forecast Engine",
+                "fp&a,forecast,planning", List.of(
+                new ScriptParam("horizon", "Horizon", "Forecast months ahead", false, "12"),
+                new ScriptParam("method", "Method", "linear, exponential_smoothing, moving_avg", false, "linear"),
+                new ScriptParam("smooth_alpha", "Alpha", "Smoothing factor (0-1) for exponential method", false, "0.3"))));
+        TEMPLATES.put("saas_metrics", new ScriptTemplate("saas_metrics.py", "SaaS Metrics & Unit Economics",
+                "fp&a,saas,startup", List.of(
+                new ScriptParam("period", "Period", "Reporting period (YYYY-MM)", false, ""),
+                new ScriptParam("cohort_months", "Cohort months", "Number of months for cohort analysis", false, "12"),
+                new ScriptParam("churn_window", "Churn window", "Days to look for churn signals", false, "90"))));
+        TEMPLATES.put("board_deck_gen", new ScriptTemplate("board_deck_gen.py", "Board Pack & KPI Narrative Generator",
+                "fp&a,reporting,board", List.of(
+                new ScriptParam("period", "Period", "Reporting period (YYYY-MM)", false, ""),
+                new ScriptParam("sections", "Sections", "kpi_summary, p_and_l, balance_sheet, cashflow, variance, forecasts", false, "all"),
+                new ScriptParam("format", "Format", "json, html, text", false, "json"),
+                new ScriptParam("audience", "Audience", "board, cfo, investors", false, "board"))));
     }
 
     private final UserRepository userRepository;
     private final ScriptRepository scriptRepository;
+    private final WorkflowRepository workflowRepository;
+    private final WorkflowService workflowService;
     private final StorageService storageService;
     private final PasswordEncoder passwordEncoder;
 
     public DataInitializer(UserRepository userRepository,
                            ScriptRepository scriptRepository,
+                           WorkflowRepository workflowRepository,
+                           WorkflowService workflowService,
                            StorageService storageService,
                            PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.scriptRepository = scriptRepository;
+        this.workflowRepository = workflowRepository;
+        this.workflowService = workflowService;
         this.storageService = storageService;
         this.passwordEncoder = passwordEncoder;
     }
@@ -165,6 +235,7 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) throws Exception {
         seedUsers();
         seedScripts();
+        seedWorkflows();
     }
 
     private void seedUsers() {
@@ -210,6 +281,66 @@ public class DataInitializer implements CommandLineRunner {
             } catch (IOException e) {
                 log.warn("Failed to seed script {}: {}", scriptName, e.getMessage());
             }
+        }
+    }
+
+    private void seedWorkflows() {
+        if (workflowRepository.count() > 0) {
+            return;
+        }
+        User admin = userRepository.findByUsername("admin").orElse(null);
+        if (admin == null) return;
+
+        // ── Monthly Finance Close ───────────────────────────────────────────
+        seedWorkflow(admin, "Monthly Finance Close",
+                "Full month-end close: bank reconciliation, FX revaluation, depreciation, intercompany clearing, VAT/GST return, dunning review, and variance analysis.",
+                "finance,month-end,compliance",
+                List.of("bank_feed_sync", "fx_revaluation", "depreciation_run", "intercompany_clearing",
+                        "vat_gst_return", "dunning_credit_control", "bva_variance"));
+
+        // ── Quarterly Audit Pack ────────────────────────────────────────────
+        seedWorkflow(admin, "Quarterly Audit Pack",
+                "Generate the quarterly audit trail archive, fixed asset extract, and board-ready KPI narrative for external auditors.",
+                "finance,audit,quarterly",
+                List.of("audit_extract", "depreciation_run", "intercompany_clearing", "board_deck_gen"));
+
+        // ── Payment Run ─────────────────────────────────────────────────────
+        seedWorkflow(admin, "AP Payment Run",
+                "Reconcile bank feed, generate ISO 20022 payment batch file, and preview before submission.",
+                "finance,payments,ap",
+                List.of("bank_feed_sync", "payment_batch"));
+
+        // ── SaaS Board Pack ────────────────────────────────────────────────
+        seedWorkflow(admin, "SaaS Board Pack",
+                "Pull SaaS unit economics, run rolling forecast, and generate board-ready KPI narrative.",
+                "fp&a,saas,board",
+                List.of("saas_metrics", "rolling_forecast", "board_deck_gen"));
+
+        log.info("Seeded 4 finance workflows");
+    }
+
+    private void seedWorkflow(User user, String name, String description, String tags,
+                              List<String> scriptNames) {
+        List<WorkflowStep> steps = new ArrayList<>();
+        int order = 1;
+        for (String scriptName : scriptNames) {
+            Script script = scriptRepository.findByName(scriptName).orElse(null);
+            if (script == null) {
+                log.warn("Workflow '{}' references unknown script '{}', skipping step", name, scriptName);
+                continue;
+            }
+            WorkflowStep step = new WorkflowStep();
+            step.setScriptId(script.getId());
+            step.setName(scriptName);
+            step.setOrder(order++);
+            step.setOnError(WorkflowStepOnError.STOP);
+            step.setTimeoutSeconds(600);
+            step.setParamsJson("{}");
+            steps.add(step);
+        }
+        if (!steps.isEmpty()) {
+            workflowService.create(user, name, description, tags, steps, true);
+            log.info("Seeded workflow '{}' with {} steps", name, steps.size());
         }
     }
 

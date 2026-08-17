@@ -9,8 +9,8 @@ RUN mvn -B -DskipTests package
 # ---- Runtime stage ----
 FROM eclipse-temurin:17-jre
 
-# Install tini for proper PID 1 signal handling in K8s
-RUN apt-get update && apt-get install -y --no-install-recommends tini \
+# Install tini for proper PID 1 signal handling in K8s + Python 3 for scripts
+RUN apt-get update && apt-get install -y --no-install-recommends tini python3 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -42,5 +42,7 @@ ENV JAVA_OPTS="-XX:+UseContainerSupport \
 -Djava.security.egd=file:/dev/./urandom \
 -Dfile.encoding=UTF-8 \
 -Duser.timezone=UTC"
+
+ENV AUTORUN_PYTHON_INTERPRETER=python3
 
 ENTRYPOINT ["tini", "--", "sh", "-c", "java $JAVA_OPTS -jar app.jar"]
