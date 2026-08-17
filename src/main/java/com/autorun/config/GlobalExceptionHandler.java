@@ -7,14 +7,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.ModelAndView;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-@RestControllerAdvice
+@ControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
@@ -63,9 +64,18 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleGeneric(Exception ex) {
-        log.error("Unhandled exception", ex);
-        return build(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error");
+    public Object handleGeneric(Exception ex, jakarta.servlet.http.HttpServletRequest request) {
+        log.error("Unhandled exception on {}", request.getRequestURI(), ex);
+        String accept = request.getHeader("Accept");
+        if (accept != null && accept.contains("application/json")) {
+            return build(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error");
+        }
+        ModelAndView mav = new ModelAndView("error/500");
+        mav.addObject("timestamp", Instant.now().toString());
+        mav.addObject("status", 500);
+        mav.addObject("error", "Internal Server Error");
+        mav.addObject("message", ex.getMessage());
+        return mav;
     }
 
     private ResponseEntity<Map<String, Object>> build(HttpStatus status, String message) {

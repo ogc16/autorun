@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Error')}"></head>
+<body th:replace="~{fragments :: body}">
+<div th:fragment="content">
+    <div class="text-center py-5">
+        <h1 class="display-4 text-danger"><i class="bi bi-exclamation-triangle"></i></h1>
+        <h2 class="h4 mb-3">Something went wrong</h2>
+        <p class="text-muted">The server encountered an error while processing your request.</p>
+        <a th:href="@{/dashboard}" class="btn btn-primary mt-3"><i class="bi bi-house"></i> Back to Dashboard</a>
+    </div>
+</div>
+</body>
+</html>
