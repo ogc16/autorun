@@ -20,6 +20,7 @@ public class WorkflowViewController {
     @GetMapping
     public String list(@RequestParam(required = false) String search, Model model) {
         model.addAttribute("workflows", workflowService.list(search));
+        model.addAttribute("executions", workflowService.recentExecutions());
         model.addAttribute("search", search);
         return "workflows";
     }
