@@ -113,6 +113,172 @@
         </div>
     </div>
 
+    <div class="row g-3 mt-3">
+        <div class="col-lg-4">
+            <div class="stat-card p-3 h-100">
+                <h2 class="h6 fw-bold mb-3"><i class="bi bi-shield-check text-success me-1"></i> Patch Status</h2>
+                <div class="d-flex justify-content-center">
+                    <canvas id="patchDonut" width="220" height="220"></canvas>
+                </div>
+                <div id="patchDonutEmpty" class="text-muted small text-center py-4 d-none">
+                    No patch executions yet — run <code>patch_orchestrator</code> to start.
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8">
+            <div class="stat-card p-3 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="h6 fw-bold mb-0"><i class="bi bi-bar-chart-line text-primary me-1"></i> Patches by Script</h2>
+                    <a th:href="@{/scripts}" class="small">View all scripts</a>
+                </div>
+                <div class="d-flex justify-content-center">
+                    <canvas id="patchBar" height="140"></canvas>
+                </div>
+                <div id="patchBarEmpty" class="text-muted small text-center py-4 d-none">
+                    No patch script data to chart.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mt-3">
+        <div class="col-lg-7">
+            <div class="stat-card p-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="h6 fw-bold mb-0"><i class="bi bi-clock-history text-warning me-1"></i> Recent Patch Runs</h2>
+                </div>
+                <div th:if="${#lists.isEmpty(recentPatchRuns)}" class="text-muted small py-3">
+                    No patch runs on record.
+                </div>
+                <table th:if="${!#lists.isEmpty(recentPatchRuns)}" class="table table-sm table-clickable align-middle mb-0">
+                    <thead>
+                    <tr class="text-muted small">
+                        <th>Script</th><th>Status</th><th>Duration</th><th>Started</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="e : ${recentPatchRuns}" th:onclick="'location.href=\'/executions/' + ${e.id} + '\''">
+                        <td th:text="${e.script != null ? e.script.name : '—'}">patch</td>
+                        <td>
+                            <span class="badge"
+                                  th:classappend="${e.status.name() == 'SUCCESS'} ? 'text-bg-success' : (${e.status.name() == 'RUNNING'} ? 'text-bg-primary' : 'text-bg-danger')"
+                                  th:text="${e.status}">SUCCESS</span>
+                        </td>
+                        <td th:text="${e.durationMs != null ? e.durationMs + ' ms' : '—'}">—</td>
+                        <td class="text-muted small" th:text="${#temporals.format(e.startedAt, 'MMM dd HH:mm')}">—</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="stat-card p-3">
+                <h2 class="h6 fw-bold mb-3"><i class="bi bi-info-circle text-info me-1"></i> Patch Scripts</h2>
+                <div class="list-group list-group-flush small">
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span><i class="bi bi-windows text-primary me-1"></i> win_patch</span><span class="badge text-bg-secondary">Windows</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span><i class="bi bi-terminal text-success me-1"></i> linux_patch</span><span class="badge text-bg-secondary">Linux</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span><i class="bi bi-box-seam text-warning me-1"></i> thirdparty_patch</span><span class="badge text-bg-secondary">Cross-platform</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span><i class="bi bi-check-circle text-info me-1"></i> patch_verify</span><span class="badge text-bg-secondary">Verify</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span><i class="bi bi-arrow-counterclockwise text-danger me-1"></i> patch_rollback</span><span class="badge text-bg-secondary">Rollback</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span><i class="bi bi-clipboard-data text-secondary me-1"></i> patch_inventory</span><span class="badge text-bg-secondary">Inventory</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span><i class="bi bi-eyeglasses text-secondary me-1"></i> patch_compliance</span><span class="badge text-bg-secondary">Compliance</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span><i class="bi bi-gear-wide-connected text-primary me-1"></i> patch_orchestrator</span><span class="badge text-bg-primary">Master</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script th:inline="javascript">
+document.addEventListener('DOMContentLoaded', function() {
+    var patchByScript = /*[[${patchByScript}]]*/ {};
+
+    var scripts = Object.keys(patchByScript);
+    var totalSuccess = 0, totalFailed = 0, totalOther = 0;
+    var labels = [], successData = [], failData = [], otherData = [];
+
+    scripts.forEach(function(name) {
+        var statuses = patchByScript[name];
+        var s = statuses['SUCCESS'] || 0;
+        var f = statuses['FAILED'] || 0;
+        var t = statuses['TIMEOUT'] || 0;
+        var c = statuses['CANCELLED'] || 0;
+        var r = statuses['RUNNING'] || 0;
+        totalSuccess += s;
+        totalFailed += f + t;
+        totalOther += c + r;
+        labels.push(name);
+        successData.push(s);
+        failData.push(f + t);
+        otherData.push(c + r);
+    });
+
+    var hasPatchData = scripts.length > 0;
+    document.getElementById('patchDonut').style.display = hasPatchData ? '' : 'none';
+    document.getElementById('patchDonutEmpty').classList.toggle('d-none', hasPatchData);
+    document.getElementById('patchBar').style.display = hasPatchData ? '' : 'none';
+    document.getElementById('patchBarEmpty').classList.toggle('d-none', hasPatchData);
+
+    if (!hasPatchData) return;
+
+    new Chart(document.getElementById('patchDonut'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Success', 'Failed', 'Other'],
+            datasets: [{
+                data: [totalSuccess, totalFailed, totalOther],
+                backgroundColor: ['#198754', '#dc3545', '#6c757d'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            cutout: '65%',
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10 } }
+            },
+            responsive: false
+        }
+    });
+
+    new Chart(document.getElementById('patchBar'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: 'Success', data: successData, backgroundColor: '#198754' },
+                { label: 'Failed', data: failData, backgroundColor: '#dc3545' },
+                { label: 'Other', data: otherData, backgroundColor: '#6c757d' }
+            ]
+        },
+        options: {
+            scales: {
+                x: { stacked: true, grid: { display: false } },
+                y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 } }
+            },
+            plugins: {
+                legend: { position: 'top', labels: { boxWidth: 12 } }
+            },
+            responsive: true
+        }
+    });
+});
+</script>
+
 </div>
 </body>
 </html>

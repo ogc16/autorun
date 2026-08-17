@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -27,31 +28,78 @@ public class DataInitializer implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
 
-    private static final Map<String, ScriptTemplate> TEMPLATES = Map.of(
-            "system_info", new ScriptTemplate("system_info.cmd", "Cross-platform system info (demo)",
-                    "system-info,demo", List.of()),
-            "collect_logs", new ScriptTemplate("collect_logs.py", "Collect log files and summarize (demo)",
-                    "log-collection,demo", List.of(new ScriptParam("days", "Days back", "Only consider logs newer than N days", false, "7"))),
-            "backup", new ScriptTemplate("backup.sh", "Tar backup of a directory (Linux)",
-                    "backup,linux", List.of(new ScriptParam("src", "Source directory", "Directory to archive", true, "/var/www"),
-                    new ScriptParam("dest", "Destination", "Where to write the .tar.gz", true, "./backups"))),
-            "patch_apt", new ScriptTemplate("patch_apt.sh", "APT update & upgrade (Linux)",
-                    "patching,linux", List.of()),
-            "add_user", new ScriptTemplate("add_user.sh", "Provision a new Linux user (Linux)",
-                    "user-provisioning,identity,linux", List.of(new ScriptParam("username", "Username", "Login name for the new user", true, null))),
-            "disk_usage", new ScriptTemplate("disk_usage.py", "Cross-platform disk usage report",
-                    "disk,monitoring,cross-platform", List.of(new ScriptParam("path", "Path", "Directory to check (default: /)", false, "/"))),
-            "check_services", new ScriptTemplate("check_services.sh", "Check status of system services (Linux)",
-                    "services,monitoring,linux", List.of(new ScriptParam("services", "Services", "Comma-separated service names to check", true, null))),
-            "cleanup_temp", new ScriptTemplate("cleanup_temp.sh", "Remove old temporary files (Linux)",
-                    "cleanup,maintenance,linux", List.of(new ScriptParam("path", "Path", "Directory to clean (default: /tmp)", false, "/tmp"),
-                    new ScriptParam("days", "Days old", "Delete files older than N days", false, "7"))),
-            "ssl_check", new ScriptTemplate("ssl_check.py", "Check SSL certificate expiry dates",
-                    "ssl,security,cross-platform", List.of(new ScriptParam("hosts", "Hosts", "Comma-separated host:port pairs", true, null),
-                    new ScriptParam("warn_days", "Warning days", "Warn if certificate expires within N days", false, "30"))),
-            "restart_process", new ScriptTemplate("restart_process.py", "Restart a process by name",
-                    "process,operations,cross-platform", List.of(new ScriptParam("process_name", "Process name", "Name of the process/service to restart", true, null),
-                    new ScriptParam("method", "Method", "Restart method: auto, systemctl, kill, taskkill", false, "auto"))));
+    private static final Map<String, ScriptTemplate> TEMPLATES;
+    static {
+        TEMPLATES = new HashMap<>();
+        // Core scripts
+        TEMPLATES.put("system_info", new ScriptTemplate("system_info.cmd", "Cross-platform system info (demo)",
+                "system-info,demo", List.of()));
+        TEMPLATES.put("collect_logs", new ScriptTemplate("collect_logs.py", "Collect log files and summarize (demo)",
+                "log-collection,demo", List.of(new ScriptParam("days", "Days back", "Only consider logs newer than N days", false, "7"))));
+        TEMPLATES.put("backup", new ScriptTemplate("backup.sh", "Tar backup of a directory (Linux)",
+                "backup,linux", List.of(new ScriptParam("src", "Source directory", "Directory to archive", true, "/var/www"),
+                new ScriptParam("dest", "Destination", "Where to write the .tar.gz", true, "./backups"))));
+        TEMPLATES.put("add_user", new ScriptTemplate("add_user.sh", "Provision a new Linux user (Linux)",
+                "user-provisioning,identity,linux", List.of(new ScriptParam("username", "Username", "Login name for the new user", true, null))));
+        TEMPLATES.put("disk_usage", new ScriptTemplate("disk_usage.py", "Cross-platform disk usage report",
+                "disk,monitoring,cross-platform", List.of(new ScriptParam("path", "Path", "Directory to check (default: /)", false, "/"))));
+        TEMPLATES.put("check_services", new ScriptTemplate("check_services.sh", "Check status of system services (Linux)",
+                "services,monitoring,linux", List.of(new ScriptParam("services", "Services", "Comma-separated service names to check", true, null))));
+        TEMPLATES.put("cleanup_temp", new ScriptTemplate("cleanup_temp.sh", "Remove old temporary files (Linux)",
+                "cleanup,maintenance,linux", List.of(new ScriptParam("path", "Path", "Directory to clean (default: /tmp)", false, "/tmp"),
+                new ScriptParam("days", "Days old", "Delete files older than N days", false, "7"))));
+        TEMPLATES.put("ssl_check", new ScriptTemplate("ssl_check.py", "Check SSL certificate expiry dates",
+                "ssl,security,cross-platform", List.of(new ScriptParam("hosts", "Hosts", "Comma-separated host:port pairs", true, null),
+                new ScriptParam("warn_days", "Warning days", "Warn if certificate expires within N days", false, "30"))));
+        TEMPLATES.put("restart_process", new ScriptTemplate("restart_process.py", "Restart a process by name",
+                "process,operations,cross-platform", List.of(new ScriptParam("process_name", "Process name", "Name of the process/service to restart", true, null),
+                new ScriptParam("method", "Method", "Restart method: auto, systemctl, kill, taskkill", false, "auto"))));
+        // Patch management
+        TEMPLATES.put("patch_apt", new ScriptTemplate("patch_apt.sh", "APT update & upgrade (Linux)",
+                "patching,linux", List.of()));
+        TEMPLATES.put("win_patch", new ScriptTemplate("win_patch.ps1", "Windows Update: check, install, auto-reboot (Windows)",
+                "patching,windows", List.of()));
+        TEMPLATES.put("linux_patch", new ScriptTemplate("linux_patch.sh", "Linux apt/yum upgrade with logging (Linux)",
+                "patching,linux", List.of()));
+        TEMPLATES.put("thirdparty_patch", new ScriptTemplate("thirdparty_patch.py", "Upgrade pip/npm packages (cross-platform)",
+                "patching,cross-platform", List.of()));
+        TEMPLATES.put("patch_verify", new ScriptTemplate("patch_verify.py", "Verify installed versions after patching",
+                "patching,compliance,cross-platform", List.of()));
+        TEMPLATES.put("patch_rollback", new ScriptTemplate("patch_rollback.py", "Rollback a package to a previous version",
+                "patching,rollback,cross-platform", List.of(new ScriptParam("package", "Package", "Package name to rollback", true, null),
+                new ScriptParam("version", "Version", "Target version to install", true, null))));
+        TEMPLATES.put("patch_inventory", new ScriptTemplate("patch_inventory.py", "Full patch inventory across platforms",
+                "patching,inventory,cross-platform", List.of()));
+        TEMPLATES.put("patch_compliance", new ScriptTemplate("patch_compliance.py", "Check patch compliance against baseline",
+                "patching,compliance,cross-platform", List.of()));
+        // System & Infrastructure
+        TEMPLATES.put("health_check", new ScriptTemplate("health_check.py", "Cross-platform health: CPU, disk, memory, load",
+                "monitoring,health,cross-platform", List.of()));
+        TEMPLATES.put("net_diag", new ScriptTemplate("net_diag.py", "Network diagnostics: DNS, ping, ports, routes",
+                "networking,diagnostics,cross-platform", List.of()));
+        TEMPLATES.put("svc_monitor", new ScriptTemplate("svc_monitor.py", "Service/process monitor with restart",
+                "monitoring,services,cross-platform", List.of(new ScriptParam("services", "Services", "Comma-separated service names to monitor", true, null))));
+        // Patch orchestration & reporting
+        TEMPLATES.put("patch_orchestrator", new ScriptTemplate("patch_orchestrator.py", "Master daily patch workflow: inventory, apply, verify, report, notify",
+                "patching,orchestration,cross-platform", List.of(
+                new ScriptParam("dry_run", "Dry run", "Only check, never install (default: false)", false, "false"),
+                new ScriptParam("auto_rollback", "Auto rollback", "Auto-revert on verification failure (default: true)", false, "true"),
+                new ScriptParam("notify", "Notify", "Send notification at end (default: false)", false, "false"),
+                new ScriptParam("slack_webhook", "Slack webhook", "Slack webhook URL", false, ""),
+                new ScriptParam("email_to", "Email to", "Email recipient", false, ""))));
+        TEMPLATES.put("daily_report", new ScriptTemplate("daily_report.py", "Aggregate system health, patches, backups into one report",
+                "reporting,compliance,cross-platform", List.of(
+                new ScriptParam("output", "Output format", "json, text, or html (default: text)", false, "text"),
+                new ScriptParam("sections", "Sections", "health, patches, backups, security, alerts (default: all)", false, "all"))));
+        TEMPLATES.put("notify", new ScriptTemplate("notify.py", "Send alerts via email or Slack",
+                "notifications,cross-platform", List.of(
+                new ScriptParam("channel", "Channel", "slack, email, or both (default: both)", false, "both"),
+                new ScriptParam("title", "Title", "Alert title", true, null),
+                new ScriptParam("body", "Body", "Alert body text", true, null),
+                new ScriptParam("severity", "Severity", "info, warning, or critical (default: warning)", false, "warning"),
+                new ScriptParam("slack_webhook", "Slack webhook", "Slack webhook URL", false, ""),
+                new ScriptParam("email_to", "Email to", "Email recipient", false, ""))));
+    }
 
     private final UserRepository userRepository;
     private final ScriptRepository scriptRepository;

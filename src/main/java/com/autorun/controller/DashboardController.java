@@ -11,6 +11,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -56,6 +58,23 @@ public class DashboardController extends BaseViewController {
                 "CANCELLED", executionLogRepository.countByStatus(ExecutionStatus.CANCELLED),
                 "RUNNING", executionLogRepository.countByStatus(ExecutionStatus.RUNNING));
 
+        // Patch status data
+        List<String> PATCH_SCRIPTS = List.of(
+                "patch_apt", "win_patch", "linux_patch", "thirdparty_patch",
+                "patch_verify", "patch_rollback", "patch_inventory", "patch_compliance",
+                "patch_orchestrator", "daily_report");
+        List<ExecutionLog> recentPatchRuns =
+                executionLogRepository.findTop20ByScriptNameInOrderByStartedAtDesc(PATCH_SCRIPTS);
+        List<Object[]> patchStatusRows =
+                executionLogRepository.countByStatusForScriptsContaining("patch");
+        Map<String, Map<String, Long>> patchByScript = new LinkedHashMap<>();
+        for (Object[] row : patchStatusRows) {
+            String scriptName = (String) row[0];
+            String status = ((ExecutionStatus) row[1]).name();
+            Long count = (Long) row[2];
+            patchByScript.computeIfAbsent(scriptName, k -> new LinkedHashMap<>()).put(status, count);
+        }
+
         model.addAttribute("scriptCount", scriptRepository.count());
         model.addAttribute("jobCount", jobRepository.count());
         model.addAttribute("executionCount", totalExecutions);
@@ -64,6 +83,8 @@ public class DashboardController extends BaseViewController {
         model.addAttribute("successRate", successRate);
         model.addAttribute("recentExecutions", recent);
         model.addAttribute("byStatus", byStatus);
+        model.addAttribute("recentPatchRuns", recentPatchRuns);
+        model.addAttribute("patchByScript", patchByScript);
         return "dashboard";
     }
 }
