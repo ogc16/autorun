@@ -1,15 +1,16 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments :: head('Policies')}"></head>
 <body th:replace="~{fragments :: body}">
 <div th:fragment="content">
+
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="fw-bold mb-1"><i class="bi bi-shield-lock-fill text-info"></i> Policies</h2>
+            <h1 class="h3 mb-1">Policies</h1>
             <p class="text-muted mb-0">Datto RMM-style policy-based automation with client grouping</p>
         </div>
         <div class="d-flex gap-2">
-            <a th:href="@{/policies/client-groups}" class="btn btn-outline-info">
+            <a th:href="@{/policies/client-groups}" class="btn btn-outline-secondary">
                 <i class="bi bi-people"></i> Client Groups
             </a>
             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPolicyModal">
@@ -18,33 +19,72 @@
         </div>
     </div>
 
-    <div th:if="${#lists.isEmpty(policies)}" class="card bg-dark border-secondary">
-        <div class="card-body text-center text-muted py-5">
-            <i class="bi bi-shield" style="font-size:3rem;"></i>
-            <p class="mt-3">No policies defined yet. Create policies to automate scripts on schedule per client group.</p>
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card p-3 d-flex align-items-center">
+                <div class="stat-icon bg-primary-subtle text-primary me-3"><i class="bi bi-shield"></i></div>
+                <div>
+                    <div class="text-muted small">Total Policies</div>
+                    <div class="fs-4 fw-bold" th:text="${#lists.size(policies)}">0</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card p-3 d-flex align-items-center">
+                <div class="stat-icon bg-success-subtle text-success me-3"><i class="bi bi-check-circle"></i></div>
+                <div>
+                    <div class="text-muted small">Active</div>
+                    <div class="fs-4 fw-bold">0</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card p-3 d-flex align-items-center">
+                <div class="stat-icon bg-info-subtle text-info me-3"><i class="bi bi-people"></i></div>
+                <div>
+                    <div class="text-muted small">Client Groups</div>
+                    <div class="fs-4 fw-bold" th:text="${#lists.size(clientGroups)}">0</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card p-3 d-flex align-items-center">
+                <div class="stat-icon bg-warning-subtle text-warning me-3"><i class="bi bi-clock"></i></div>
+                <div>
+                    <div class="text-muted small">Scheduled</div>
+                    <div class="fs-4 fw-bold" th:text="${#lists.size(policies)}">0</div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="table-responsive" th:if="${!#lists.isEmpty(policies)}">
-        <table class="table table-dark table-hover">
-            <thead><tr>
-                <th>Name</th><th>Script</th><th>Client Group</th><th>Schedule</th><th>Status</th><th>Actions</th>
-            </tr></thead>
+    <div class="stat-card p-3 mb-3">
+        <div th:if="${#lists.isEmpty(policies)}" class="text-muted small py-3">
+            No policies defined yet. Create policies to automate scripts on schedule per client group.
+        </div>
+        <table th:if="${!#lists.isEmpty(policies)}" class="table table-hover align-middle mb-0">
+            <thead>
+            <tr class="text-muted small">
+                <th>Name</th><th>Script</th><th>Client Group</th><th>Schedule</th><th>Status</th><th class="text-end">Actions</th>
+            </tr>
+            </thead>
             <tbody>
             <tr th:each="p : ${policies}">
                 <td>
-                    <strong th:text="${p.name}">Policy</strong>
-                    <br><small class="text-muted" th:text="${p.description}">Desc</small>
+                    <a class="fw-semibold text-decoration-none" th:href="@{/policies/{id}(id=${p.id})}" th:text="${p.name}">Policy</a>
+                    <div class="text-muted small" th:text="${p.description}">Desc</div>
                 </td>
-                <td th:text="${p.script?.name}">Script</td>
-                <td th:text="${p.clientGroup?.name ?: 'All'}">Group</td>
+                <td>
+                    <span class="badge text-bg-dark" th:text="${p.script?.name}">Script</span>
+                </td>
+                <td class="small" th:text="${p.clientGroup?.name ?: 'All'}">Group</td>
                 <td><code class="small" th:text="${p.cronExpression}">0 * * * *</code></td>
                 <td>
-                    <span class="badge" th:classappend="${p.enabled} ? 'bg-success' : 'bg-secondary'"
+                    <span class="badge" th:classappend="${p.enabled} ? 'text-bg-success' : 'text-bg-secondary'"
                           th:text="${p.enabled} ? 'Active' : 'Disabled'">Status</span>
                 </td>
-                <td>
-                    <button class="btn btn-sm btn-outline-danger"
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-danger" title="Delete"
                             th:onclick="'deletePolicy(' + ${p.id} + ')'">
                         <i class="bi bi-trash"></i>
                     </button>
@@ -56,35 +96,35 @@
 
     <div class="modal fade" id="createPolicyModal" tabindex="-1">
         <div class="modal-dialog">
-            <div class="modal-content bg-dark">
-                <div class="modal-header border-secondary">
-                    <h5 class="modal-title">New Policy</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">New Policy</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="createPolicyForm">
                         <div class="mb-3">
-                            <label class="form-label">Policy Name</label>
+                            <label class="form-label small fw-semibold">Policy Name</label>
                             <input type="text" class="form-control" name="name" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Description</label>
+                            <label class="form-label small fw-semibold">Description</label>
                             <textarea class="form-control" name="description" rows="2"></textarea>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Client Group</label>
+                            <label class="form-label small fw-semibold">Client Group</label>
                             <select class="form-select" name="clientGroupId">
                                 <option value="">All Clients</option>
                                 <option th:each="cg : ${clientGroups}" th:value="${cg.id}" th:text="${cg.name}">Group</option>
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Cron Expression</label>
+                            <label class="form-label small fw-semibold">Cron Expression</label>
                             <input type="text" class="form-control" name="cronExpression" placeholder="0 2 * * *" required>
-                            <small class="text-muted">e.g. "0 2 * * *" = daily at 2am, "0 */6 * * *" = every 6h</small>
+                            <div class="form-text">e.g. "0 2 * * *" = daily at 2am, "0 */6 * * *" = every 6h</div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Notify on</label>
+                            <label class="form-label small fw-semibold">Notify on</label>
                             <select class="form-select" name="notifyOn">
                                 <option value="FAILURE">Failure Only</option>
                                 <option value="SUCCESS">Success Only</option>
@@ -96,7 +136,7 @@
                         <input type="hidden" name="enabled" value="true">
                     </form>
                 </div>
-                <div class="modal-footer border-secondary">
+                <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-primary" onclick="submitPolicy()">Create</button>
                 </div>

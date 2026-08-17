@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments :: head('Policy Detail')}"></head>
 <body th:replace="~{fragments :: body}">
 <div th:fragment="content">
+
     <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb">
+        <ol class="breadcrumb small">
             <li class="breadcrumb-item"><a th:href="@{/policies}">Policies</a></li>
             <li class="breadcrumb-item active" th:text="${policy.name}">Name</li>
         </ol>
@@ -12,42 +13,48 @@
 
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="fw-bold mb-1" th:text="${policy.name}">Policy</h2>
+            <h1 class="h3 mb-1" th:text="${policy.name}">Policy</h1>
             <p class="text-muted mb-0" th:text="${policy.description}">Description</p>
         </div>
-        <span class="badge fs-6" th:classappend="${policy.enabled} ? 'bg-success' : 'bg-secondary'"
+        <span class="badge" th:classappend="${policy.enabled} ? 'text-bg-success' : 'text-bg-secondary'"
               th:text="${policy.enabled} ? 'Active' : 'Disabled'">Status</span>
     </div>
 
     <div class="row g-4">
         <div class="col-md-6">
-            <div class="card bg-dark border-secondary">
-                <div class="card-header border-secondary fw-bold">
-                    <i class="bi bi-gear me-1"></i> Configuration
-                </div>
-                <div class="card-body">
-                    <table class="table table-sm table-dark mb-0">
-                        <tr><td class="text-muted" style="width:40%">Script</td>
-                            <td th:text="${policy.script?.name}">-</td></tr>
-                        <tr><td class="text-muted">Client Group</td>
-                            <td th:text="${policy.clientGroup?.name ?: 'All Clients'}">All</td></tr>
-                        <tr><td class="text-muted">Schedule</td>
-                            <td><code th:text="${policy.cronExpression}">0 * * * *</code></td></tr>
-                        <tr><td class="text-muted">Timezone</td>
-                            <td th:text="${policy.timeZone}">UTC</td></tr>
-                        <tr><td class="text-muted">Notify on</td>
-                            <td th:text="${policy.notifyOn}">FAILURE</td></tr>
-                        <tr><td class="text-muted">Arguments</td>
-                            <td><code class="small" th:text="${policy.argumentsJson}">{}</code></td></tr>
-                        <tr><td class="text-muted">Created by</td>
-                            <td th:text="${policy.createdBy?.username}">-</td></tr>
-                        <tr><td class="text-muted">Created</td>
-                            <td th:text="${#temporals.format(policy.createdAt, 'MMM dd, yyyy')}">-</td></tr>
-                    </table>
-                </div>
+            <div class="stat-card p-3">
+                <h2 class="h6 fw-bold mb-3">Configuration</h2>
+                <table class="table table-sm mb-0">
+                    <tr><td class="text-muted small" style="width:40%">Script</td>
+                        <td class="small" th:text="${policy.script?.name}">-</td></tr>
+                    <tr><td class="text-muted small">Client Group</td>
+                        <td class="small" th:text="${policy.clientGroup?.name ?: 'All Clients'}">All</td></tr>
+                    <tr><td class="text-muted small">Schedule</td>
+                        <td><code class="small" th:text="${policy.cronExpression}">0 * * * *</code></td></tr>
+                    <tr><td class="text-muted small">Timezone</td>
+                        <td class="small" th:text="${policy.timeZone}">UTC</td></tr>
+                    <tr><td class="text-muted small">Notify on</td>
+                        <td class="small" th:text="${policy.notifyOn}">FAILURE</td></tr>
+                    <tr><td class="text-muted small">Arguments</td>
+                        <td><code class="small" th:text="${policy.argumentsJson}">{}</code></td></tr>
+                    <tr><td class="text-muted small">Created by</td>
+                        <td class="small" th:text="${policy.createdBy?.username}">-</td></tr>
+                    <tr><td class="text-muted small">Created</td>
+                        <td class="small" th:text="${#temporals.format(policy.createdAt, 'MMM dd, yyyy')}">-</td></tr>
+                </table>
             </div>
         </div>
     </div>
+</div>
+
+<div th:fragment="scripts">
+<script>
+function deletePolicy(id) {
+    if (!confirm('Delete this policy?')) return;
+    fetch('/api/policies/' + id, {method:'DELETE'})
+        .then(r => { if (r.ok) window.location.href='/policies'; else alert('Error'); });
+}
+</script>
 </div>
 </body>
 </html>

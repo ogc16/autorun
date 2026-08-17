@@ -2,9 +2,11 @@ package com.autorun.controller;
 
 import com.autorun.model.ExecutionLog;
 import com.autorun.model.ExecutionStatus;
+import com.autorun.repository.ApprovalRequestRepository;
 import com.autorun.repository.ExecutionLogRepository;
 import com.autorun.repository.ScriptJobRepository;
 import com.autorun.repository.ScriptRepository;
+import com.autorun.repository.WorkflowRepository;
 import com.autorun.service.ExecutionService;
 import com.autorun.service.UserService;
 import org.springframework.stereotype.Controller;
@@ -23,17 +25,23 @@ public class DashboardController extends BaseViewController {
     private final ScriptJobRepository jobRepository;
     private final ExecutionLogRepository executionLogRepository;
     private final ExecutionService executionService;
+    private final WorkflowRepository workflowRepository;
+    private final ApprovalRequestRepository approvalRequestRepository;
 
     public DashboardController(UserService userService,
                                ScriptRepository scriptRepository,
                                ScriptJobRepository jobRepository,
                                ExecutionLogRepository executionLogRepository,
-                               ExecutionService executionService) {
+                               ExecutionService executionService,
+                               WorkflowRepository workflowRepository,
+                               ApprovalRequestRepository approvalRequestRepository) {
         super(userService);
         this.scriptRepository = scriptRepository;
         this.jobRepository = jobRepository;
         this.executionLogRepository = executionLogRepository;
         this.executionService = executionService;
+        this.workflowRepository = workflowRepository;
+        this.approvalRequestRepository = approvalRequestRepository;
     }
 
     @GetMapping("/")
@@ -81,6 +89,8 @@ public class DashboardController extends BaseViewController {
         model.addAttribute("runningCount", executionService.runningCount());
         model.addAttribute("failedCount", failed);
         model.addAttribute("successRate", successRate);
+        model.addAttribute("workflowCount", workflowRepository.count());
+        model.addAttribute("pendingApprovals", approvalRequestRepository.countByStatus(com.autorun.model.ApprovalStatus.PENDING));
         model.addAttribute("recentExecutions", recent);
         model.addAttribute("byStatus", byStatus);
         model.addAttribute("recentPatchRuns", recentPatchRuns);
