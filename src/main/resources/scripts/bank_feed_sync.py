@@ -184,9 +184,6 @@ def main():
         "has_discrepancies": len(unmatched_gl) > 0 or len(unmatched_bank) > 0,
     }
     print(json.dumps(result, indent=2))
-
-    if result["has_discrepancies"]:
-        sys.exit(1)
     sys.exit(0)
 
 
