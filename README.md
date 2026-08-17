@@ -10,7 +10,7 @@
 ![Quartz](https://img.shields.io/badge/Scheduler-Quartz-6DB33F)
 ![MySQL](https://img.shields.io/badge/Database-MySQL%208%20%7C%20H2-4479A1?logo=mysql&logoColor=white)
 ![CI](https://img.shields.io/github/actions/workflow/status/ogc16/autorun/ci.yml)
-[![Docker Image](https://img.shields.io/badge/Docker-ghcr.io%2Fogc16%2Fautorun-2496ED?logo=docker&logoColor=white)](https://ghcr.io/ogc16/autorun)
+[![Docker Image](https://img.shields.io/badge/Docker-ogc16%2Fautorun-2496ED?logo=docker&logoColor=white)](https://hub.docker.com/r/ogc16/autorun)
 [![Maven Package](https://img.shields.io/badge/Maven-GitHub%20Packages-F75A28?logo=apachemaven&logoColor=white)](https://github.com/ogc16/autorun/packages)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
