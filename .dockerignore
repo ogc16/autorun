@@ -1,0 +1,12 @@
+.git
+.github
+k8s
+*.md
+LICENSE
+.gitignore
+.idea
+*.iml
+target
+data
+docker-compose.yml
+deploy-gke.sh

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: autorun
+  namespace: autorun
+  labels:
+    app.kubernetes.io/name: autorun
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: autorun
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

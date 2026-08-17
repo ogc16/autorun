@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: autorun-config
+  namespace: autorun
+  labels:
+    app.kubernetes.io/name: autorun
+data:
+  SPRING_PROFILES_ACTIVE: "gke"
+  SERVER_PORT: "8080"
+  SPRING_DATASOURCE_URL: "jdbc:mysql://cloudsql-proxy:3306/autorun?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+  SPRING_DATASOURCE_DRIVER_CLASS_NAME: "com.mysql.cj.jdbc.Driver"
+  SPRING_JPA_HIBERNATE_DDL_AUTO: "validate"
+  SPRING_QUARTZ_JOB_STORE_TYPE: "jdbc"
+  AUTORUN_STORAGE_DIR: "/app/data/scripts"
+  AUTORUN_LOG_DIR: "/app/data/logs"
+  AUTORUN_PYTHON_INTERPRETER: "python3"
+  AUTORUN_MAX_CONCURRENT_EXECUTIONS: "10"
+  AUTORUN_DEFAULT_TIMEOUT_SECONDS: "600"
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,prometheus"
+  MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: "always"
+  LOGGING_LEVEL_ORG_QUARTZ: "WARN"
+  LOGGING_LEVEL_COM_AUTORUN: "INFO"

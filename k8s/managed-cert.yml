@@ -1,0 +1,8 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: autorun-cert
+  namespace: autorun
+spec:
+  domains:
+    - autorun.example.com
