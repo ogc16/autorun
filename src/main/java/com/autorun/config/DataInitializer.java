@@ -38,7 +38,20 @@ public class DataInitializer implements CommandLineRunner {
             "patch_apt", new ScriptTemplate("patch_apt.sh", "APT update & upgrade (Linux)",
                     "patching,linux", List.of()),
             "add_user", new ScriptTemplate("add_user.sh", "Provision a new Linux user (Linux)",
-                    "user-provisioning,identity,linux", List.of(new ScriptParam("username", "Username", "Login name for the new user", true, null))));
+                    "user-provisioning,identity,linux", List.of(new ScriptParam("username", "Username", "Login name for the new user", true, null))),
+            "disk_usage", new ScriptTemplate("disk_usage.py", "Cross-platform disk usage report",
+                    "disk,monitoring,cross-platform", List.of(new ScriptParam("path", "Path", "Directory to check (default: /)", false, "/"))),
+            "check_services", new ScriptTemplate("check_services.sh", "Check status of system services (Linux)",
+                    "services,monitoring,linux", List.of(new ScriptParam("services", "Services", "Comma-separated service names to check", true, null))),
+            "cleanup_temp", new ScriptTemplate("cleanup_temp.sh", "Remove old temporary files (Linux)",
+                    "cleanup,maintenance,linux", List.of(new ScriptParam("path", "Path", "Directory to clean (default: /tmp)", false, "/tmp"),
+                    new ScriptParam("days", "Days old", "Delete files older than N days", false, "7"))),
+            "ssl_check", new ScriptTemplate("ssl_check.py", "Check SSL certificate expiry dates",
+                    "ssl,security,cross-platform", List.of(new ScriptParam("hosts", "Hosts", "Comma-separated host:port pairs", true, null),
+                    new ScriptParam("warn_days", "Warning days", "Warn if certificate expires within N days", false, "30"))),
+            "restart_process", new ScriptTemplate("restart_process.py", "Restart a process by name",
+                    "process,operations,cross-platform", List.of(new ScriptParam("process_name", "Process name", "Name of the process/service to restart", true, null),
+                    new ScriptParam("method", "Method", "Restart method: auto, systemctl, kill, taskkill", false, "auto"))));
 
     private final UserRepository userRepository;
     private final ScriptRepository scriptRepository;

@@ -1,6 +1,6 @@
 services:
   app:
-    image: ogc16/autorun:latest
+    build: .
     container_name: autorun-app
     restart: unless-stopped
     environment:
