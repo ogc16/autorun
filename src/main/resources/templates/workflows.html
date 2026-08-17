@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments :: head('Workflows')}"></head>
+<body th:replace="~{fragments :: body}">
+<div th:fragment="content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="bi bi-diagram-3-fill text-primary"></i> Workflows</h2>
+            <p class="text-muted mb-0">Multi-step script orchestration (Ansible-style)</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createWorkflowModal">
+            <i class="bi bi-plus-lg"></i> New Workflow
+        </button>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12" th:if="${#lists.isEmpty(workflows)}">
+            <div class="card bg-dark border-secondary">
+                <div class="card-body text-center text-muted py-5">
+                    <i class="bi bi-diagram-3" style="font-size:3rem;"></i>
+                    <p class="mt-3">No workflows yet. Create your first workflow to chain scripts together.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4" th:each="wf : ${workflows}">
+            <div class="card bg-dark border-secondary h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title mb-0" th:text="${wf.name}">Workflow</h5>
+                        <span class="badge" th:classappend="${wf.enabled} ? 'bg-success' : 'bg-secondary'"
+                              th:text="${wf.enabled} ? 'Enabled' : 'Disabled'">Enabled</span>
+                    </div>
+                    <p class="text-muted small" th:text="${wf.description}">Description</p>
+                    <div class="mb-2" th:if="${wf.tags}">
+                        <span class="badge bg-info me-1" th:each="tag : ${wf.tags.split(',')}" th:text="${#strings.trim(tag)}">tag</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <small class="text-muted">
+                            <i class="bi bi-clock"></i>
+                            <span th:text="${wf.lastRunAt != null ? #temporals.format(wf.lastRunAt, 'MMM dd HH:mm') : 'Never'}">Never</span>
+                        </small>
+                        <div>
+                            <a th:href="@{/workflows/{id}(id=${wf.id})}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <button class="btn btn-sm btn-success ms-1" th:onclick="'runWorkflow(' + ${wf.id} + ')'"
+                                    th:if="${wf.enabled}">
+                                <i class="bi bi-play-fill"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Modal -->
+    <div class="modal fade" id="createWorkflowModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content bg-dark">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">New Workflow</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createWorkflowForm">
+                        <div class="mb-3">
+                            <label class="form-label">Name</label>
+                            <input type="text" class="form-control" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" name="description" rows="2"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tags (comma-separated)</label>
+                            <input type="text" class="form-control" name="tags" placeholder="e.g. patching,infra">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Steps (JSON)</label>
+                            <textarea class="form-control font-monospace" name="steps" rows="6"
+                                      placeholder='[{"scriptId":1,"name":"Step 1","order":0,"onError":"STOP"}]'></textarea>
+                            <small class="text-muted">Each step: scriptId, name, paramsJson, condition, onError (STOP/CONTINUE/ROLLBACK), timeoutSeconds, order</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="submitWorkflow()">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:fragment="scripts">
+<script>
+function submitWorkflow() {
+    const form = document.getElementById('createWorkflowForm');
+    const data = {
+        name: form.name.value,
+        description: form.description.value,
+        tags: form.tags.value,
+        steps: JSON.parse(form.steps.value || '[]'),
+        enabled: true
+    };
+    fetch('/api/workflows', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    }).then(r => { if (r.ok) location.reload(); else alert('Error creating workflow'); });
+}
+function runWorkflow(id) {
+    fetch('/api/workflows/' + id + '/run', {method:'POST'})
+        .then(r => { if (r.ok) alert('Workflow started!'); else alert('Error starting workflow'); });
+}
+</script>
+</div>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments :: head('Workflow Detail')}"></head>
+<body th:replace="~{fragments :: body}">
+<div th:fragment="content">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a th:href="@{/workflows}">Workflows</a></li>
+            <li class="breadcrumb-item active" th:text="${workflow.name}">Name</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1" th:text="${workflow.name}">Workflow</h2>
+            <p class="text-muted mb-0" th:text="${workflow.description}">Description</p>
+        </div>
+        <div>
+            <span class="badge me-2" th:classappend="${workflow.enabled} ? 'bg-success' : 'bg-secondary'"
+                  th:text="${workflow.enabled} ? 'Enabled' : 'Disabled'">Status</span>
+            <button class="btn btn-success" th:if="${workflow.enabled}"
+                    th:onclick="'runWorkflow(' + ${workflow.id} + ')'">
+                <i class="bi bi-play-fill"></i> Run Workflow
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-8">
+            <div class="card bg-dark border-secondary">
+                <div class="card-header border-secondary fw-bold">
+                    <i class="bi bi-list-ol me-1"></i> Steps (<span th:text="${#lists.size(steps)}">0</span>)
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item bg-dark border-secondary" th:each="step, iter : ${steps}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="badge bg-secondary me-2" th:text="${iter.index + 1}">1</span>
+                                    <strong th:text="${step.name}">Step</strong>
+                                    <span class="text-muted ms-2 small" th:text="'Script #' + ${step.scriptId}">Script</span>
+                                </div>
+                                <div>
+                                    <span class="badge bg-warning text-dark me-1" th:if="${step.condition}"
+                                          th:text="'if: ' + ${step.condition}">condition</span>
+                                    <span class="badge"
+                                          th:classappend="${step.onError.name() == 'STOP'} ? 'bg-danger' : (${step.onError.name() == 'CONTINUE'} ? 'bg-info' : 'bg-warning')"
+                                          th:text="${step.onError}">onError</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="list-group-item bg-dark border-secondary text-center text-muted"
+                             th:if="${#lists.isEmpty(steps)}">
+                            No steps defined
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card bg-dark border-secondary">
+                <div class="card-header border-secondary fw-bold">
+                    <i class="bi bi-info-circle me-1"></i> Info
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-dark mb-0">
+                        <tr><td class="text-muted">Created by</td><td th:text="${workflow.createdBy?.username}">-</td></tr>
+                        <tr><td class="text-muted">Created</td><td th:text="${#temporals.format(workflow.createdAt, 'MMM dd, yyyy')}">-</td></tr>
+                        <tr><td class="text-muted">Last run</td>
+                            <td th:text="${workflow.lastRunAt != null ? #temporals.format(workflow.lastRunAt, 'MMM dd HH:mm') : 'Never'}">Never</td></tr>
+                        <tr><td class="text-muted">Tags</td>
+                            <td><span th:each="tag : ${workflow.tags?.split(',')}" class="badge bg-info me-1"
+                                      th:text="${#strings.trim(tag)}">tag</span></td></tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:fragment="scripts">
+<script>
+function runWorkflow(id) {
+    fetch('/api/workflows/' + id + '/run', {method:'POST'})
+        .then(r => r.json())
+        .then(d => alert('Workflow run started!'))
+        .catch(() => alert('Error'));
+}
+</script>
+</div>
+</body>
+</html>

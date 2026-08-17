@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments :: head('Client Groups')}"></head>
+<body th:replace="~{fragments :: body}">
+<div th:fragment="content">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a th:href="@{/policies}">Policies</a></li>
+            <li class="breadcrumb-item active">Client Groups</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="bi bi-people-fill text-info"></i> Client Groups</h2>
+            <p class="text-muted mb-0">Organize clients into groups for policy-based automation</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createGroupModal">
+            <i class="bi bi-plus-lg"></i> New Group
+        </button>
+    </div>
+
+    <div th:if="${#lists.isEmpty(clientGroups)}" class="card bg-dark border-secondary">
+        <div class="card-body text-center text-muted py-5">
+            <i class="bi bi-people" style="font-size:3rem;"></i>
+            <p class="mt-3">No client groups yet.</p>
+        </div>
+    </div>
+
+    <div class="row g-3" th:if="${!#lists.isEmpty(clientGroups)}">
+        <div class="col-md-4" th:each="cg : ${clientGroups}">
+            <div class="card bg-dark border-secondary h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title mb-0" th:text="${cg.name}">Group</h5>
+                        <span class="badge" th:classappend="${cg.enabled} ? 'bg-success' : 'bg-secondary'"
+                              th:text="${cg.enabled} ? 'Active' : 'Disabled'">Status</span>
+                    </div>
+                    <p class="text-muted small" th:text="${cg.description}">Description</p>
+                    <div th:if="${cg.tags}">
+                        <span class="badge bg-info me-1" th:each="tag : ${cg.tags.split(',')}"
+                              th:text="${#strings.trim(tag)}">tag</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="createGroupModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">New Client Group</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createGroupForm">
+                        <div class="mb-3">
+                            <label class="form-label">Name</label>
+                            <input type="text" class="form-control" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" name="description" rows="2"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tags (comma-separated)</label>
+                            <input type="text" class="form-control" name="tags" placeholder="e.g. enterprise,production">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="submitGroup()">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:fragment="scripts">
+<script>
+function submitGroup() {
+    const form = document.getElementById('createGroupForm');
+    fetch('/api/client-groups', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name: form.name.value, description: form.description.value, tags: form.tags.value})
+    }).then(r => { if (r.ok) location.reload(); else alert('Error'); });
+}
+</script>
+</div>
+</body>
+</html>

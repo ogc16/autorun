@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments :: head('Approvals')}"></head>
+<body th:replace="~{fragments :: body}">
+<div th:fragment="content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="bi bi-check2-circle-fill text-warning"></i> Approvals</h2>
+            <p class="text-muted mb-0">Power Automate-style approval gates for script execution</p>
+        </div>
+        <span class="badge bg-warning text-dark fs-6" th:if="${pendingCount > 0}"
+              th:text="${pendingCount} + ' pending'">0 pending</span>
+    </div>
+
+    <div class="mb-4">
+        <h5 class="fw-bold mb-3">Pending Requests</h5>
+        <div th:if="${#lists.isEmpty(pending)}" class="card bg-dark border-secondary">
+            <div class="card-body text-center text-muted py-4">
+                <i class="bi bi-check-circle" style="font-size:2rem;"></i>
+                <p class="mt-2 mb-0">No pending approvals</p>
+            </div>
+        </div>
+        <div class="card bg-dark border-secondary mb-2" th:each="req : ${pending}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-1" th:text="${req.script.name}">Script</h6>
+                        <small class="text-muted">Requested by: <span th:text="${req.requestedBy?.username}">user</span></small>
+                        <br><small class="text-muted" th:text="'Arguments: ' + ${req.argumentsJson}">args</small>
+                        <br><small class="text-muted" th:text="'Time: ' + ${#temporals.format(req.requestedAt, 'MMM dd HH:mm:ss')}">time</small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-success"
+                                th:onclick="'approve(' + ${req.id} + ')'">
+                            <i class="bi bi-check-lg"></i> Approve
+                        </button>
+                        <button class="btn btn-sm btn-danger"
+                                th:onclick="'reject(' + ${req.id} + ')'">
+                            <i class="bi bi-x-lg"></i> Reject
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <h5 class="fw-bold mb-3">Recent History</h5>
+        <div class="table-responsive">
+            <table class="table table-dark table-hover">
+                <thead><tr>
+                    <th>Script</th><th>Requested By</th><th>Decided By</th><th>Status</th><th>Note</th><th>Date</th>
+                </tr></thead>
+                <tbody>
+                <tr th:each="req : ${recent}">
+                    <td th:text="${req.script?.name}">Script</td>
+                    <td th:text="${req.requestedBy?.username}">User</td>
+                    <td th:text="${req.approver?.username ?: '-'}">-</td>
+                    <td>
+                        <span class="badge"
+                              th:classappend="${req.status.name() == 'APPROVED'} ? 'bg-success' : (${req.status.name() == 'REJECTED'} ? 'bg-danger' : (${req.status.name() == 'PENDING'} ? 'bg-warning text-dark' : 'bg-secondary'))"
+                              th:text="${req.status}">Status</span>
+                    </td>
+                    <td th:text="${req.decisionNote ?: '-'}">-</td>
+                    <td th:text="${#temporals.format(req.requestedAt, 'MMM dd HH:mm')}">Date</td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(recent)}">
+                    <td colspan="6" class="text-center text-muted">No approval history</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div th:fragment="scripts">
+<script>
+function approve(id) {
+    const note = prompt('Approval note (optional):', 'Approved');
+    if (note === null) return;
+    fetch('/api/approvals/' + id + '/approve', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({note: note})
+    }).then(r => { if (r.ok) location.reload(); else alert('Error'); });
+}
+function reject(id) {
+    const note = prompt('Rejection reason:', 'Rejected');
+    if (note === null) return;
+    fetch('/api/approvals/' + id + '/reject', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({note: note})
+    }).then(r => { if (r.ok) location.reload(); else alert('Error'); });
+}
+</script>
+</div>
+</body>
+</html>
