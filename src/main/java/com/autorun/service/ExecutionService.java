@@ -179,7 +179,6 @@ public class ExecutionService {
     private Map<String, Object> runProcess(Long executionId, Script script, List<String> positionalArgs,
                             Map<String, String> env, int timeout,
                             LocalDateTime started, String logFileName, StringBuilder buffer) {
-        StringBuilder buffer = new StringBuilder();
         AtomicBoolean cancelRequested = new AtomicBoolean(false);
         cancelFlags.put(executionId, cancelRequested);
 
