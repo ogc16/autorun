@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import com.autorun.config.RetryProperties;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -49,6 +50,8 @@ public class ExecutionService {
     private final String pythonInterpreter;
     private final int maxConcurrent;
     private final int defaultTimeoutSeconds;
+    private final RetryProperties retryProperties;
+    private final boolean dryRunEnabled;
 
     private final Map<Long, Process> runningProcesses = new ConcurrentHashMap<>();
     private final Map<Long, Set<SseEmitter>> emitters = new ConcurrentHashMap<>();
@@ -59,17 +62,21 @@ public class ExecutionService {
                             ScriptJobRepository jobRepository,
                             StorageService storageService,
                             NotificationService notificationService,
+                            RetryProperties retryProperties,
                             @Value("${autorun.python-interpreter}") String pythonInterpreter,
                             @Value("${autorun.max-concurrent-executions}") int maxConcurrent,
-                            @Value("${autorun.default-timeout-seconds}") int defaultTimeoutSeconds) {
+                            @Value("${autorun.default-timeout-seconds}") int defaultTimeoutSeconds,
+                            @Value("${autorun.dry-run.enabled:true}") boolean dryRunEnabled) {
         this.executionLogRepository = executionLogRepository;
         this.scriptRepository = scriptRepository;
         this.jobRepository = jobRepository;
         this.storageService = storageService;
         this.notificationService = notificationService;
+        this.retryProperties = retryProperties;
         this.pythonInterpreter = pythonInterpreter;
         this.maxConcurrent = maxConcurrent;
         this.defaultTimeoutSeconds = defaultTimeoutSeconds;
+        this.dryRunEnabled = dryRunEnabled;
     }
 
     /**
@@ -113,16 +120,65 @@ public class ExecutionService {
         final int timeout = timeoutSeconds == null || timeoutSeconds <= 0 ? defaultTimeoutSeconds : timeoutSeconds;
         final LocalDateTime started = LocalDateTime.now();
 
-        Thread worker = new Thread(() -> runProcess(executionId, script, positionalArgs, env, timeout,
+        Thread worker = new Thread(() -> runProcessWithRetry(executionId, script, positionalArgs, env, timeout,
                 started, logFileName, persisted.getNotifyOn()), "exec-" + executionId);
         worker.setDaemon(true);
         worker.start();
         return persisted;
     }
 
-    private void runProcess(Long executionId, Script script, List<String> positionalArgs,
+    private void runProcessWithRetry(Long executionId, Script script, List<String> positionalArgs,
+                                      Map<String, String> env, int timeout,
+                                      LocalDateTime started, String logFileName, String notifyOn) {
+        int attempts = retryProperties.getMaxAttempts();
+        if (attempts < 1) attempts = 1;
+        ExecutionStatus lastStatus = ExecutionStatus.FAILED;
+        Integer lastExit = null;
+        String lastError = null;
+        StringBuilder combined = new StringBuilder();
+
+        for (int attempt = 1; attempt <= attempts; attempt++) {
+            StringBuilder buffer = new StringBuilder();
+            String attemptLog = logFileName.replace(".log", "-attempt" + attempt + ".log");
+            Map<String, Object> result = runProcessOnce(executionId, script, positionalArgs, env, timeout, started, attemptLog, buffer);
+            combined.append(buffer);
+            lastStatus = (ExecutionStatus) result.get("status");
+            lastExit = (Integer) result.get("exitCode");
+            lastError = (String) result.get("errorMessage");
+            if (lastStatus == ExecutionStatus.SUCCESS || lastStatus == ExecutionStatus.CANCELLED || lastStatus == ExecutionStatus.TIMEOUT) {
+                break;
+            }
+            if (attempt < attempts) {
+                long backoff = (long) (retryProperties.getInitialBackoffMs() * Math.pow(retryProperties.getMultiplier(), attempt - 1));
+                if (backoff > retryProperties.getMaxBackoffMs()) backoff = retryProperties.getMaxBackoffMs();
+                combined.append("== retrying in ").append(backoff).append("ms (attempt ").append(attempt + 1).append(" of ").append(attempts).append(")\n");
+                try {
+                    Thread.sleep(backoff);
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+        finalizeExecution(executionId, script, started, logFileName, notifyOn, combined.toString(), lastStatus, lastExit, lastError);
+    }
+
+    private Map<String, Object> runProcessOnce(Long executionId, Script script, List<String> positionalArgs,
+                                               Map<String, String> env, int timeout,
+                                               LocalDateTime started, String logFileName, StringBuilder buffer) {
+        if (dryRunEnabled) {
+            append(buffer, logFileName, "== DRY-RUN MODE: simulating execution (no process spawned)");
+            List<String> command = buildCommand(script, positionalArgs);
+            append(buffer, logFileName, "== command: " + com.autorun.util.SecretMasker.mask(String.join(" ", command)));
+            append(buffer, logFileName, "== simulated exit: 0 (SUCCESS)");
+            return Map.of("status", ExecutionStatus.SUCCESS, "exitCode", 0, "errorMessage", null);
+        }
+        return runProcess(executionId, script, positionalArgs, env, timeout, started, logFileName, buffer);
+    }
+
+    private Map<String, Object> runProcess(Long executionId, Script script, List<String> positionalArgs,
                             Map<String, String> env, int timeout,
-                            LocalDateTime started, String logFileName, String notifyOn) {
+                            LocalDateTime started, String logFileName, StringBuilder buffer) {
         StringBuilder buffer = new StringBuilder();
         AtomicBoolean cancelRequested = new AtomicBoolean(false);
         cancelFlags.put(executionId, cancelRequested);
@@ -180,28 +236,32 @@ public class ExecutionService {
             }
             runningProcesses.remove(executionId);
             cancelFlags.remove(executionId);
-
-            ExecutionLog exec = executionLogRepository.findById(executionId).orElse(null);
-            if (exec != null) {
-                exec.setStatus(finalStatus);
-                exec.setExitCode(exitCode);
-                exec.setFinishedAt(LocalDateTime.now());
-                exec.setDurationMs(java.time.Duration.between(started, LocalDateTime.now()).toMillis());
-                exec.setLogContent(buffer.toString());
-                exec.setErrorMessage(errorMessage);
-                executionLogRepository.save(exec);
-                String exitInfo = exitCode == null ? "exit null" : "exit " + exitCode + " [" + com.autorun.util.ExitCodeMapper.from(exitCode).getName() + "]";
-                append(buffer, logFileName, "== finished: " + finalStatus
-                        + " (" + exitInfo + ") in " + exec.getDurationMs() + " ms");
-
-                script.setLastExecutedAt(LocalDateTime.now());
-                scriptRepository.save(script);
-
-                notificationService.notifyExecution(exec, notifyOn);
-            }
-            broadcastStatus(executionId, finalStatus, exitCode);
-            completeEmitters(executionId, finalStatus, exitCode);
         }
+        return Map.of("status", finalStatus, "exitCode", exitCode == null ? -1 : exitCode, "errorMessage", errorMessage);
+    }
+
+    private void finalizeExecution(Long executionId, Script script, LocalDateTime started, String logFileName,
+                                   String notifyOn, String logContent, ExecutionStatus finalStatus,
+                                   Integer exitCode, String errorMessage) {
+        ExecutionLog exec = executionLogRepository.findById(executionId).orElse(null);
+        if (exec != null) {
+            exec.setStatus(finalStatus);
+            exec.setExitCode(exitCode == null || exitCode < 0 ? null : exitCode);
+            exec.setFinishedAt(LocalDateTime.now());
+            exec.setDurationMs(java.time.Duration.between(started, LocalDateTime.now()).toMillis());
+            exec.setLogContent(logContent);
+            exec.setErrorMessage(errorMessage);
+            executionLogRepository.save(exec);
+            String exitInfo = exec.getExitCode() == null ? "exit null" : "exit " + exec.getExitCode() + " [" + com.autorun.util.ExitCodeMapper.from(exec.getExitCode()).getName() + "]";
+            try {
+                storageService.appendLog(logFileName, "== finished: " + finalStatus + " (" + exitInfo + ") in " + exec.getDurationMs() + " ms\n");
+            } catch (Exception ignored) {}
+            script.setLastExecutedAt(LocalDateTime.now());
+            scriptRepository.save(script);
+            notificationService.notifyExecution(exec, notifyOn);
+        }
+        broadcastStatus(executionId, finalStatus, exec != null ? exec.getExitCode() : exitCode);
+        completeEmitters(executionId, finalStatus, exec != null ? exec.getExitCode() : exitCode);
     }
 
     private List<String> buildCommand(Script script, List<String> positionalArgs) {
