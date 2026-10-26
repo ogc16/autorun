@@ -252,7 +252,7 @@ public class ExecutionService {
             exec.setLogContent(logContent);
             exec.setErrorMessage(errorMessage);
             executionLogRepository.save(exec);
-            String exitInfo = exec.getExitCode() == null ? "exit null" : "exit " + exec.getExitCode() + " [" + com.autorun.util.ExitCodeMapper.from(exec.getExitCode()).getName() + "]";
+            String exitInfo = exec.getExitCode() == null ? "exit null" : "exit " + exec.getExitCode() + " [" + com.autorun.util.ExitCodeCategory.from(exec.getExitCode()).getName() + "]";
             try {
                 storageService.appendLog(logFileName, "== finished: " + finalStatus + " (" + exitInfo + ") in " + exec.getDurationMs() + " ms\n");
             } catch (Exception ignored) {}
