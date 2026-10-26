@@ -140,6 +140,189 @@ curl -s -X POST http://localhost:8080/api/scripts/1/execute \
 | [**User Guide**](docs/USER_GUIDE.md) | Roles, step-by-step walkthroughs, sample scripts |
 | [**Deployment**](docs/DEPLOYMENT.md) | Docker, Kubernetes/GKE, environment variables, production hardening |
 
+## UML Diagrams
+
+### System Architecture (Component Diagram)
+
+```mermaid
+graph TB
+  subgraph Clients["Clients"]
+    Browser["Browser (Thymeleaf UI)"]
+    APIClient["API Client (curl/Integrations)"]
+  end
+
+  subgraph App["AutoRun Monolith (Spring Boot)"]
+    Security["Spring Security\n(JWT + Session + RBAC)"]
+    MVC["MVC Controllers\n(Thymeleaf Views)"]
+    REST["REST Controllers\n(/api/**)"]
+    ExecSvc["ExecutionService\n(ProcessBuilder + Threads)"]
+    JobSvc["JobService\n(Quartz Scheduler)"]
+    NotifSvc["NotificationService\n(Email + Slack)"]
+    AuditSvc["AuditService"]
+  end
+
+  subgraph Storage["Storage"]
+    DB[(MySQL / H2\nJPA/Hibernate)]
+    FS["File Storage\n(scripts/ + logs/)"]
+  end
+
+  subgraph OS["Operating System"]
+    Proc["OS Processes\n(py/sh/ps1/bat/cmd)"]
+  end
+
+  Browser -->|Session Cookie| Security
+  APIClient -->|Bearer JWT| Security
+  Security --> MVC
+  Security --> REST
+  MVC --> ExecSvc
+  MVC --> JobSvc
+  REST --> ExecSvc
+  REST --> JobSvc
+  ExecSvc -->|spawn| Proc
+  ExecSvc --> FS
+  ExecSvc --> NotifSvc
+  ExecSvc --> AuditSvc
+  JobSvc -->|cron triggers| ExecSvc
+  JobSvc --> DB
+  ExecSvc --> DB
+  AuditSvc --> DB
+  NotifSvc -->|SMTP/Webhook| External["External\n(Email/Slack)"]
+```
+
+### Execution Flow (Sequence Diagram)
+
+```mermaid
+sequenceDiagram
+  participant User
+  participant UI as Thymeleaf/UI or API
+  participant Sec as Security
+  participant Exec as ExecutionService
+  participant PB as ProcessBuilder
+  participant OS as OS Process
+  participant SSE as SSE Emitter
+  participant DB as Database
+
+  User->>UI: Run Script (with params)
+  UI->>Sec: Authenticate/Authorize
+  Sec-->>UI: OK
+  UI->>Exec: execute(scriptId, args)
+  Exec->>DB: Save ExecutionLog (RUNNING)
+  Exec->>Exec: Check concurrency cap
+  Exec->>PB: Build command + args
+  Exec->>OS: pb.start()
+  Exec->>DB: Register running process
+  Exec-->>UI: 202 Accepted + executionId
+
+  loop Stream logs
+    OS-->>Exec: stdout/stderr
+    Exec->>SSE: emit log event
+    SSE-->>User: Live log stream
+    Exec->>FS: Append to log file
+  end
+
+  OS-->>Exec: exit code / timeout/cancel
+  Exec->>DB: Update ExecutionLog (status, duration, exitCode)
+  Exec->>Notif: Notify if policy matches
+  Exec->>Audit: Audit log entry
+  Exec->>SSE: emit complete event
+  SSE-->>User: Execution complete
+```
+
+### Data Model (Class Diagram)
+
+```mermaid
+classDiagram
+  class User {
+    +Long id
+    +String username
+    +String password
+    +String displayName
+    +String email
+    +Role role
+    +Boolean enabled
+    +LocalDateTime lastLoginAt
+    +LocalDateTime createdAt
+  }
+
+  class Script {
+    +Long id
+    +String name
+    +String filename
+    +FileType fileType
+    +String description
+    +String tags
+    +String parametersJson
+    +Long sizeBytes
+    +String storagePath
+    +User createdBy
+    +LocalDateTime createdAt
+    +LocalDateTime updatedAt
+    +LocalDateTime lastExecutedAt
+  }
+
+  class ScriptJob {
+    +Long id
+    +String name
+    +String description
+    +Script script
+    +String cronExpression
+    +String timeZone
+    +JobStatus status
+    +String argumentsJson
+    +NotifyOn notifyOn
+    +Boolean enabled
+    +User createdBy
+    +LocalDateTime createdAt
+    +LocalDateTime lastRunAt
+  }
+
+  class ExecutionLog {
+    +Long id
+    +Script script
+    +TriggerType triggeredBy
+    +User user
+    +ScriptJob job
+    +ExecutionStatus status
+    +Integer exitCode
+    +LocalDateTime startedAt
+    +LocalDateTime finishedAt
+    +Long durationMs
+    +String logContent
+    +String logFile
+    +String argumentsJson
+    +NotifyOn notifyOn
+    +String errorMessage
+  }
+
+  class AuditLog {
+    +Long id
+    +User user
+    +String action
+    +String targetType
+    +String targetId
+    +String details
+    +String ipAddress
+    +LocalDateTime timestamp
+  }
+
+  class NotificationSettings {
+    +Long id
+    +Boolean emailEnabled
+    +String emailRecipients
+    +Boolean slackEnabled
+    +String slackWebhook
+    +String slackChannel
+  }
+
+  User "1" --> "*" Script : creates
+  User "1" --> "*" ScriptJob : creates
+  User "1" --> "*" ExecutionLog : runs
+  User "1" --> "*" AuditLog : generates
+  Script "1" --> "*" ScriptJob : scheduled by
+  Script "1" --> "*" ExecutionLog : executed as
+  ScriptJob "1" --> "*" ExecutionLog : triggered by
+```
+
 ## Project Layout
 
 ```
