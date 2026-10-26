@@ -20,6 +20,13 @@ autorun:
   python-interpreter: python
   max-concurrent-executions: 5
   default-timeout-seconds: 30
+  dry-run:
+    enabled: false
+  retry:
+    max-attempts: 1
+    initial-backoff-ms: 10
+    multiplier: 1.0
+    max-backoff-ms: 10
 
 management:
   endpoints:
