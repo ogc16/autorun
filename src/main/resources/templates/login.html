@@ -25,8 +25,30 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Password</label>
-                    <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+                    <div class="input-group">
+                        <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required>
+                        <button class="btn btn-outline-secondary" type="button" id="togglePassword" aria-label="Toggle password visibility">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
                 </div>
+                <script>
+                    (function() {
+                        var toggle = document.getElementById('togglePassword');
+                        var pwd = document.getElementById('password');
+                        if (toggle && pwd) {
+                            toggle.addEventListener('click', function() {
+                                var isPwd = pwd.getAttribute('type') === 'password';
+                                pwd.setAttribute('type', isPwd ? 'text' : 'password');
+                                var icon = toggle.querySelector('i');
+                                if (icon) {
+                                    icon.classList.toggle('bi-eye');
+                                    icon.classList.toggle('bi-eye-slash');
+                                }
+                            });
+                        }
+                    })();
+                </script>
                 <button type="submit" class="btn btn-primary w-100">Sign in</button>
             </form>
 
