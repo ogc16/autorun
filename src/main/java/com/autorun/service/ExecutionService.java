@@ -139,7 +139,7 @@ public class ExecutionService {
             if (env != null) {
                 pb.environment().putAll(env);
             }
-            append(buffer, logFileName, "== command: " + String.join(" ", command));
+            append(buffer, logFileName, "== command: " + com.autorun.util.SecretMasker.mask(String.join(" ", command)));
             append(buffer, logFileName, "== started at " + started.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
 
             process = pb.start();
@@ -190,8 +190,9 @@ public class ExecutionService {
                 exec.setLogContent(buffer.toString());
                 exec.setErrorMessage(errorMessage);
                 executionLogRepository.save(exec);
+                String exitInfo = exitCode == null ? "exit null" : "exit " + exitCode + " [" + com.autorun.util.ExitCodeMapper.from(exitCode).getName() + "]";
                 append(buffer, logFileName, "== finished: " + finalStatus
-                        + " (exit " + exitCode + ") in " + exec.getDurationMs() + " ms");
+                        + " (" + exitInfo + ") in " + exec.getDurationMs() + " ms");
 
                 script.setLastExecutedAt(LocalDateTime.now());
                 scriptRepository.save(script);
@@ -236,11 +237,12 @@ public class ExecutionService {
                     StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
+                    String masked = com.autorun.util.SecretMasker.mask(line);
                     append(buffer, logFileName,
-                            (isError ? "[stderr] " : "") + line);
+                            (isError ? "[stderr] " : "") + masked);
                     broadcast(executionId, "log",
                             "{\"line\": \"%s\", \"stream\": \"%s\"}"
-                                    .formatted(escape(line), isError ? "stderr" : "stdout"));
+                                    .formatted(escape(masked), isError ? "stderr" : "stdout"));
                 }
             } catch (IOException ignored) {
                 // stream closed when process dies
