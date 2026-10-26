@@ -29,6 +29,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -139,8 +140,7 @@ public class ExecutionService {
 
         for (int attempt = 1; attempt <= attempts; attempt++) {
             StringBuilder buffer = new StringBuilder();
-            String attemptLog = logFileName.replace(".log", "-attempt" + attempt + ".log");
-            Map<String, Object> result = runProcessOnce(executionId, script, positionalArgs, env, timeout, started, attemptLog, buffer);
+            Map<String, Object> result = runProcessOnce(executionId, script, positionalArgs, env, timeout, started, logFileName, buffer);
             combined.append(buffer);
             lastStatus = (ExecutionStatus) result.get("status");
             lastExit = (Integer) result.get("exitCode");
@@ -171,7 +171,11 @@ public class ExecutionService {
             List<String> command = buildCommand(script, positionalArgs);
             append(buffer, logFileName, "== command: " + com.autorun.util.SecretMasker.mask(String.join(" ", command)));
             append(buffer, logFileName, "== simulated exit: 0 (SUCCESS)");
-            return Map.of("status", ExecutionStatus.SUCCESS, "exitCode", 0, "errorMessage", null);
+            Map<String, Object> dryResult = new HashMap<>();
+            dryResult.put("status", ExecutionStatus.SUCCESS);
+            dryResult.put("exitCode", 0);
+            dryResult.put("errorMessage", null);
+            return dryResult;
         }
         return runProcess(executionId, script, positionalArgs, env, timeout, started, logFileName, buffer);
     }
@@ -236,7 +240,11 @@ public class ExecutionService {
             runningProcesses.remove(executionId);
             cancelFlags.remove(executionId);
         }
-        return Map.of("status", finalStatus, "exitCode", exitCode == null ? -1 : exitCode, "errorMessage", errorMessage);
+        Map<String, Object> result = new HashMap<>();
+        result.put("status", finalStatus);
+        result.put("exitCode", exitCode == null ? -1 : exitCode);
+        result.put("errorMessage", errorMessage);
+        return result;
     }
 
     private void finalizeExecution(Long executionId, Script script, LocalDateTime started, String logFileName,

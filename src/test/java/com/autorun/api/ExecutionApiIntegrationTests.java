@@ -106,10 +106,12 @@ class ExecutionApiIntegrationTests {
                     .andExpect(status().isOk())
                     .andReturn().getResponse().getContentAsString();
             JsonNode node = objectMapper.readTree(body);
-            if (!"RUNNING".equals(node.path("status").asText())) {
-                return node;
+            String status = node.path("status").asText();
+            if ("RUNNING".equals(status) || "QUEUED".equals(status) || "PENDING".equals(status)) {
+                Thread.sleep(200);
+                continue;
             }
-            Thread.sleep(200);
+            return node;
         }
         throw new AssertionError("Execution did not finish in time");
     }
